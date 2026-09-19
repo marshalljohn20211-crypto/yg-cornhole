@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { adminCookie, createAdminSession, isAdminConfigured, verifyAdminPassword } from "../../../lib/admin-auth";
+import { adminCookie, createAdminSession, isAdminConfigured, verifyAdminCredentials } from "../../../lib/admin-auth";
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
   if (attempt.count >= 8) return redirectTo(request, "/admin/login?error=locked");
 
   const formData = await request.formData();
+  const username = formData.get("username");
   const password = formData.get("password");
-  if (typeof password !== "string" || !verifyAdminPassword(password)) {
+  if (typeof username !== "string" || typeof password !== "string" || !await verifyAdminCredentials(username, password)) {
     attempts.set(key, { ...attempt, count: attempt.count + 1 });
     return redirectTo(request, "/admin/login?error=invalid");
   }

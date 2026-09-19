@@ -1,16 +1,22 @@
 import "server-only";
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import type { RowDataPacket } from "mysql2";
+import { databaseUrl, getDatabase } from "./database";
 
 const COOKIE_NAME = "yg_admin_session";
 const SESSION_SECONDS = 60 * 60 * 8;
 
-function credentials() {
-  const password = process.env.ADMIN_PASSWORD;
+function sessionConfig() {
   const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!password || !secret || secret.length < 32) return null;
-  return { password, secret };
+  if (!secret || secret.length < 32) return null;
+  try {
+    databaseUrl();
+  } catch {
+    return null;
+  }
+  return { secret };
 }
 
 function safeEqual(left: string, right: string) {
@@ -24,16 +30,29 @@ function signature(payload: string, secret: string) {
 }
 
 export function isAdminConfigured() {
-  return credentials() !== null;
+  return sessionConfig() !== null;
 }
 
-export function verifyAdminPassword(value: string) {
-  const config = credentials();
-  return config ? safeEqual(value, config.password) : false;
+type AdminRow = RowDataPacket & {
+  password_hash: string;
+  password_salt: string;
+};
+
+export async function verifyAdminCredentials(usernameValue: string, password: string) {
+  const username = usernameValue.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,80}$/.test(username) || !password || password.length > 200) return false;
+  const [rows] = await getDatabase().execute<AdminRow[]>(
+    "SELECT password_hash, password_salt FROM admin_users WHERE username = ? AND is_active = 1 LIMIT 1",
+    [username],
+  );
+  const admin = rows[0];
+  if (!admin) return false;
+  const derived = scryptSync(password, Buffer.from(admin.password_salt, "hex"), 64).toString("hex");
+  return safeEqual(derived, admin.password_hash);
 }
 
 export function createAdminSession() {
-  const config = credentials();
+  const config = sessionConfig();
   if (!config) throw new Error("Admin authentication is not configured.");
   const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
   const payload = `admin.${expires}`;
@@ -41,7 +60,7 @@ export function createAdminSession() {
 }
 
 export function verifyAdminSession(value: string | undefined) {
-  const config = credentials();
+  const config = sessionConfig();
   if (!config || !value) return false;
   const parts = value.split(".");
   if (parts.length !== 3 || parts[0] !== "admin") return false;

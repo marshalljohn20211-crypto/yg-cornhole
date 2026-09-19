@@ -26,9 +26,9 @@ The cart offers PayPal and PayPal-hosted debit or credit card fields. It creates
 
 The checkout collects the customer name, email, contact number, full US/Canadian delivery address, and optional delivery notes before either PayPal or card payment. Pending orders are recorded when PayPal creates the order and marked paid after a verified capture.
 
-Set `ADMIN_PASSWORD` and a random `ADMIN_SESSION_SECRET` of at least 32 characters, then open `/admin`. The admin password stays server-side and successful sign-in creates an HTTP-only, same-site, signed session cookie that expires after eight hours.
+Admin accounts and salted `scrypt` password hashes are stored in MySQL. Set a random `ADMIN_SESSION_SECRET` of at least 32 characters, then open `/admin`. Successful sign-in creates an HTTP-only, same-site, signed session cookie that expires after eight hours.
 
-Orders are stored in PostgreSQL. Set `DATABASE_URL` to the server-side connection string; the application creates the `orders` table and its date index if they do not exist. The equivalent schema is available in `db/schema.sql` for manual provisioning. Set `DATABASE_SSL=require` when the hosted database requires TLS. Checkout is intentionally blocked before payment when PostgreSQL is not configured.
+Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string and apply `db/schema.sql` before starting the application. Checkout is intentionally blocked before payment when MySQL is not configured.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

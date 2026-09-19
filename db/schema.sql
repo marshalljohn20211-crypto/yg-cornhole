@@ -1,16 +1,24 @@
 CREATE TABLE IF NOT EXISTS orders (
-  id TEXT PRIMARY KEY,
-  capture_id TEXT,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'paid')),
-  payment_status TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  paid_at TIMESTAMPTZ,
-  customer JSONB NOT NULL,
-  items JSONB NOT NULL,
-  subtotal INTEGER NOT NULL CHECK (subtotal >= 0),
-  shipping INTEGER NOT NULL CHECK (shipping >= 0),
-  total INTEGER NOT NULL CHECK (total >= 0),
-  currency CHAR(3) NOT NULL DEFAULT 'USD'
-);
+  id VARCHAR(32) NOT NULL PRIMARY KEY,
+  capture_id VARCHAR(32) NULL,
+  status ENUM('pending', 'paid') NOT NULL,
+  payment_status VARCHAR(40) NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  paid_at DATETIME(3) NULL,
+  customer JSON NOT NULL,
+  items JSON NOT NULL,
+  subtotal INT UNSIGNED NOT NULL,
+  shipping INT UNSIGNED NOT NULL,
+  total INT UNSIGNED NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'USD',
+  INDEX orders_created_at_idx (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
+CREATE TABLE IF NOT EXISTS admin_users (
+  username VARCHAR(80) COLLATE utf8mb4_bin NOT NULL PRIMARY KEY,
+  password_hash CHAR(128) NOT NULL,
+  password_salt CHAR(64) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
