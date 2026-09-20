@@ -28,7 +28,7 @@ The checkout collects the customer name, email, contact number, full US/Canadian
 
 Admin accounts and salted `scrypt` password hashes are stored in MySQL. Set a random `ADMIN_SESSION_SECRET` of at least 32 characters, then open `/admin`. Successful sign-in creates an HTTP-only, same-site, signed session cookie that expires after eight hours.
 
-Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string and apply `db/schema.sql` before starting the application. Checkout is intentionally blocked before payment when MySQL is not configured.
+Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string, or provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` separately. The separate variables match GoDaddy Hosted Database secrets. Apply `db/schema.sql` before starting the application. Checkout is intentionally blocked before payment when MySQL is not configured.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
