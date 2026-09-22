@@ -99,3 +99,34 @@ export async function paypalRequest<T>(path: string, init: RequestInit = {}) {
 
   return body;
 }
+
+type WebhookHeaders = {
+  authAlgo: string;
+  certUrl: string;
+  transmissionId: string;
+  transmissionSig: string;
+  transmissionTime: string;
+};
+
+export async function verifyPayPalWebhook(headers: WebhookHeaders, event: unknown) {
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  if (!webhookId) {
+    throw new PayPalRequestError("PAYPAL_WEBHOOK_ID is missing from this deployment.", 503, "PAYPAL_WEBHOOK_CONFIG_MISSING");
+  }
+  const result = await paypalRequest<{ verification_status?: string }>(
+    "/v1/notifications/verify-webhook-signature",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        auth_algo: headers.authAlgo,
+        cert_url: headers.certUrl,
+        transmission_id: headers.transmissionId,
+        transmission_sig: headers.transmissionSig,
+        transmission_time: headers.transmissionTime,
+        webhook_id: webhookId,
+        webhook_event: event,
+      }),
+    },
+  );
+  return result.verification_status === "SUCCESS";
+}

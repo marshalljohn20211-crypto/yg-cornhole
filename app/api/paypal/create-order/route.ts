@@ -1,19 +1,36 @@
+import { createHash } from "node:crypto";
 import { cents, priceCheckout } from "../../../lib/checkout";
 import { cleanShipping } from "../../../lib/order-details";
-import { assertOrderStorageConfigured, saveOrder } from "../../../lib/orders";
+import { assertOrderStorageConfigured, getOrderByCheckoutKey, saveOrder } from "../../../lib/orders";
 import { PayPalRequestError, paypalRequest } from "../../../lib/paypal";
+import { assertReceiptSigningConfigured, createReceiptToken } from "../../../lib/receipt";
 
 type CreatedOrder = { id: string; status: string };
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { items?: unknown; shipping?: unknown };
+    const body = await request.json() as { items?: unknown; shipping?: unknown; checkoutAttemptId?: unknown };
+    if (typeof body.checkoutAttemptId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.checkoutAttemptId)) {
+      return Response.json({ error: "The checkout attempt is invalid.", code: "CHECKOUT_ATTEMPT_INVALID" }, { status: 400 });
+    }
     const cart = priceCheckout(body.items);
     const shipping = cleanShipping(body.shipping);
     assertOrderStorageConfigured();
+    assertReceiptSigningConfigured();
+    const fingerprint = createHash("sha256").update(JSON.stringify({ lines: cart.lines, shipping })).digest("hex");
+    const existing = await getOrderByCheckoutKey(body.checkoutAttemptId);
+    if (existing) {
+      if (existing.checkoutFingerprint !== fingerprint) {
+        return Response.json({ error: "Checkout details changed. Start the payment again.", code: "CHECKOUT_ATTEMPT_CHANGED" }, { status: 409 });
+      }
+      if (existing.status === "pending") {
+        return Response.json({ id: existing.id, receiptToken: createReceiptToken(existing.id), reused: true });
+      }
+      return Response.json({ error: "This checkout attempt has already finished.", code: "CHECKOUT_ATTEMPT_FINISHED" }, { status: 409 });
+    }
     const order = await paypalRequest<CreatedOrder>("/v2/checkout/orders", {
       method: "POST",
-      headers: { "PayPal-Request-Id": crypto.randomUUID() },
+      headers: { "PayPal-Request-Id": body.checkoutAttemptId },
       body: JSON.stringify({
         intent: "CAPTURE",
         payer: { email_address: shipping.email },
@@ -52,6 +69,8 @@ export async function POST(request: Request) {
 
     await saveOrder({
       id: order.id,
+      checkoutKey: body.checkoutAttemptId,
+      checkoutFingerprint: fingerprint,
       status: "pending",
       paymentStatus: order.status,
       createdAt: new Date().toISOString(),
@@ -63,7 +82,7 @@ export async function POST(request: Request) {
       currency: "USD",
     });
 
-    return Response.json({ id: order.id });
+    return Response.json({ id: order.id, receiptToken: createReceiptToken(order.id) });
   } catch (error) {
     const status = error instanceof PayPalRequestError ? error.status : 400;
     const message = error instanceof Error ? error.message : "The PayPal order could not be created.";

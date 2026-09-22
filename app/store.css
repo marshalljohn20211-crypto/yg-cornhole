@@ -199,10 +199,22 @@
 .order-confirmation > span { color: var(--teal-bright); font: 700 10px var(--font-mono), monospace; letter-spacing: .11em; text-transform: uppercase; }
 .order-confirmation h1 { max-width: 900px; margin: 15px 0 22px; font: 800 clamp(58px, 7vw, 104px)/.94 var(--font-display), sans-serif; text-transform: uppercase; }
 .order-confirmation > p { max-width: 620px; margin: 0; color: #b8c3cb; font-size: 16px; line-height: 1.7; }
-.order-confirmation > div { margin-top: 30px; padding: 15px 23px; display: grid; gap: 5px; border: 1px solid rgba(255,255,255,.16); }
+.order-confirmation__reference { margin-top: 30px; padding: 15px 23px; display: grid; gap: 5px; border: 1px solid rgba(255,255,255,.16); }
 .order-confirmation small { color: #8f9da7; font: 700 8px var(--font-mono), monospace; text-transform: uppercase; }
 .order-confirmation strong { font: 700 12px var(--font-mono), monospace; letter-spacing: .06em; }
 .order-confirmation a { min-height: 52px; margin-top: 30px; padding: 0 22px; display: inline-flex; align-items: center; gap: 9px; background: var(--red); color: white; font: 700 10px var(--font-mono), monospace; text-transform: uppercase; }
+.order-confirmation__actions { max-width: 620px; margin-top: 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.order-confirmation__actions button { min-height: 48px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--teal-bright); background: var(--teal-bright); color: #0d1924; font: 700 10px var(--font-mono), monospace; text-transform: uppercase; cursor: pointer; }
+.order-confirmation__actions button.is-secondary { border-color: rgba(255,255,255,.28); background: transparent; color: white; }
+.order-confirmation__actions button:disabled { opacity: .6; cursor: wait; }
+.order-confirmation__actions p { flex-basis: 100%; margin: 5px 0 0; color: #b8c3cb; font-size: 12px; line-height: 1.55; }
+
+@media print {
+  .site-header, .store-footer, .order-confirmation__actions, .order-confirmation > a { display: none !important; }
+  .order-confirmation { min-height: auto; padding: 40px; background: white; color: #111; }
+  .order-confirmation > p, .order-confirmation small { color: #444; }
+  .order-confirmation__reference { border-color: #bbb; }
+}
 .empty-cart { min-height: 650px; padding: 90px var(--gutter); display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #0d1924; background-image: radial-gradient(circle at 50% 40%, #27445b, transparent 42%); color: white; text-align: center; }
 .empty-cart > svg { margin-bottom: 25px; color: var(--teal-bright); }
 .empty-cart h1 { max-width: 850px; }

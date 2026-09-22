@@ -22,13 +22,23 @@ Copy `.env.example` to `.env.local` and add the PayPal REST app credentials dire
 
 The cart offers PayPal and PayPal-hosted debit or credit card fields. It creates and captures PayPal Orders v2 payments through server-only route handlers. Product prices are recalculated from `app/data/products.ts`; totals sent by the browser are not trusted.
 
+After a server-verified capture, the confirmation screen offers a private downloadable text receipt and a print-friendly confirmation. Set a stable `RECEIPT_SECRET` of at least 32 characters in production so existing receipt links remain valid if PayPal or admin credentials are rotated. If omitted, receipt signing falls back to `ADMIN_SESSION_SECRET` or `PAYPAL_CLIENT_SECRET`.
+
+### PayPal webhook
+
+Register `https://ygcornhole.com/api/paypal/webhook` on the same PayPal REST app whose credentials are deployed. Subscribe to `CHECKOUT.ORDER.APPROVED`, `CHECKOUT.PAYMENT-APPROVAL.REVERSED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, and `PAYMENT.CAPTURE.REFUNDED`. Copy the Webhook ID PayPal creates into `PAYPAL_WEBHOOK_ID`. Sandbox and live apps have separate webhook registrations and IDs.
+
+The endpoint verifies every signature with PayPal before updating an order, records webhook event IDs to make retries idempotent, checks completed amounts/currency against the stored order, and returns a non-2xx response when an event needs PayPal to retry.
+
 ## Order admin
 
 The checkout collects the customer name, email, contact number, full US/Canadian delivery address, and optional delivery notes before either PayPal or card payment. Pending orders are recorded when PayPal creates the order and marked paid after a verified capture.
 
 Admin accounts and salted `scrypt` password hashes are stored in MySQL. Set a random `ADMIN_SESSION_SECRET` of at least 32 characters, then open `/admin`. Successful sign-in creates an HTTP-only, same-site, signed session cookie that expires after eight hours.
 
-Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string, or provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` separately. The separate variables match GoDaddy Hosted Database secrets. Apply `db/schema.sql` before starting the application. Checkout is intentionally blocked before payment when MySQL is not configured.
+Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string, or provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` separately. The separate variables match GoDaddy Hosted Database secrets. Apply `db/schema.sql` for a new database. For an existing installation, apply `db/migrations/2026-09-23-order-reliability.sql` once before deploying this version. Checkout is intentionally blocked before payment when MySQL is not configured.
+
+The admin order desk supports search, status filtering, pagination, PayPal reconciliation, and controlled fulfillment stages: paid, processing, shipped, and completed. Reconciliation also expires unpaid checkouts after 24 hours and deletes expired records after 90 days. For automatic maintenance, schedule an hourly `POST` to `/api/maintenance/orders` with `Authorization: Bearer <ORDER_MAINTENANCE_SECRET>`. The database account therefore needs `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on the application tables.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

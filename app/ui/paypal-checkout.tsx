@@ -57,6 +57,7 @@ type CheckoutResponse = {
   id?: string;
   status?: string;
   clientToken?: string;
+  receiptToken?: string;
 };
 
 async function readJson(response: Response) {
@@ -186,6 +187,8 @@ export default function PayPalCheckout({
   const cardExpiryRef = useRef<HTMLDivElement>(null);
   const cardCvvRef = useRef<HTMLDivElement>(null);
   const cardSessionRef = useRef<CardFieldsSession | null>(null);
+  const receiptTokensRef = useRef(new Map<string, string>());
+  const checkoutAttemptRef = useRef<{ signature: string; id: string } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paypal");
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [issue, setIssue] = useState<CheckoutIssue | null>(null);
@@ -216,6 +219,14 @@ export default function PayPalCheckout({
       deliveryNotes: String(data.get("deliveryNotes") ?? ""),
     };
   }, []);
+
+  const getCheckoutAttemptId = useCallback((shipping: ReturnType<typeof getShippingDetails>) => {
+    const signature = JSON.stringify({ cartKey, shipping });
+    if (checkoutAttemptRef.current?.signature !== signature) {
+      checkoutAttemptRef.current = { signature, id: window.crypto.randomUUID() };
+    }
+    return checkoutAttemptRef.current.id;
+  }, [cartKey]);
 
   useEffect(() => {
     if (paymentMethod !== "paypal") return;
@@ -263,20 +274,28 @@ export default function PayPalCheckout({
         }
         const session = sdk.createPayPalOneTimePaymentSession({
           onApprove: async ({ orderId }) => {
+            const receiptToken = receiptTokensRef.current.get(orderId);
+            if (!receiptToken) throw new Error("The private receipt token is missing from this checkout.");
             const response = await fetch("/api/paypal/capture-order", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orderId }),
+              body: JSON.stringify({ orderId, receiptToken }),
             });
             const order = await readJson(response);
             if (order.status !== "COMPLETED" || !order.id) throw new Error("PayPal has not completed this payment.");
             toast.success("Payment completed. Your order is confirmed.");
-            router.push(`/order-confirmation?order_id=${encodeURIComponent(order.id)}`);
+            router.push(`/order-confirmation?order_id=${encodeURIComponent(order.id)}#receipt=${encodeURIComponent(receiptToken)}`);
             clearCart();
             return order;
           },
-          onCancel: () => toast.info("PayPal checkout was cancelled. Your cart is unchanged."),
-          onError: () => toast.error("PayPal could not complete the payment. Please try again."),
+          onCancel: () => {
+            checkoutAttemptRef.current = null;
+            toast.info("PayPal checkout was cancelled. Your cart is unchanged.");
+          },
+          onError: () => {
+            checkoutAttemptRef.current = null;
+            toast.error("PayPal could not complete the payment. Please try again.");
+          },
         });
 
         if (disposed || !containerRef.current) return;
@@ -287,12 +306,14 @@ export default function PayPalCheckout({
         clickHandler = async () => {
           try {
             const shipping = getShippingDetails();
+            const checkoutAttemptId = getCheckoutAttemptId(shipping);
             const orderPromise = fetch("/api/paypal/create-order", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ items, shipping }),
+              body: JSON.stringify({ items, shipping, checkoutAttemptId }),
             }).then(readJson).then((order) => {
-              if (!order.id) throw new Error("PayPal did not return an order ID.");
+              if (!order.id || !order.receiptToken) throw new Error("PayPal did not return a complete checkout session.");
+              receiptTokensRef.current.set(order.id, order.receiptToken);
               return { orderId: order.id };
             });
             await session.start({ presentationMode: "auto" }, orderPromise);
@@ -319,7 +340,7 @@ export default function PayPalCheckout({
       disposed = true;
       if (button && clickHandler) button.removeEventListener("click", clickHandler);
     };
-  }, [cartKey, clearCart, clientId, getShippingDetails, items, paymentMethod, retryKey, router]);
+  }, [cartKey, clearCart, clientId, getCheckoutAttemptId, getShippingDetails, items, paymentMethod, retryKey, router]);
 
   useEffect(() => {
     if (paymentMethod !== "card") return;
@@ -421,13 +442,14 @@ export default function PayPalCheckout({
       setCardSubmitting(true);
       setCardMessage(null);
       const shipping = getShippingDetails();
+      const checkoutAttemptId = getCheckoutAttemptId(shipping);
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, shipping }),
+        body: JSON.stringify({ items, shipping, checkoutAttemptId }),
       });
       const order = await readJson(response);
-      if (!order.id) throw new Error("PayPal did not return an order ID.");
+      if (!order.id || !order.receiptToken) throw new Error("PayPal did not return a complete checkout session.");
 
       const trimmedPostalCode = shipping.postalCode.trim();
       const result = await session.submit(
@@ -435,29 +457,34 @@ export default function PayPalCheckout({
         trimmedPostalCode ? { billingAddress: { postalCode: trimmedPostalCode } } : undefined,
       );
       if (result.state === "canceled") {
+        checkoutAttemptRef.current = null;
         const message = "Card verification was cancelled. Your cart is unchanged.";
         setCardMessage(message);
         toast.info(message);
         return;
       }
       if (result.state !== "succeeded") {
+        checkoutAttemptRef.current = null;
         const message = describeCardFailure(result.data?.message, environment);
         setCardMessage(message);
         toast.error(message);
         return;
       }
 
+      const approvedOrderId = result.data?.orderId ?? order.id;
+      if (approvedOrderId !== order.id) throw new Error("The approved payment did not match this checkout.");
+
       const captureResponse = await fetch("/api/paypal/capture-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: result.data?.orderId ?? order.id }),
+        body: JSON.stringify({ orderId: approvedOrderId, receiptToken: order.receiptToken }),
       });
       const completedOrder = await readJson(captureResponse);
       if (completedOrder.status !== "COMPLETED" || !completedOrder.id) {
         throw new Error("PayPal has not completed this card payment.");
       }
       toast.success("Card payment completed. Your order is confirmed.");
-      router.push("/order-confirmation?order_id=" + encodeURIComponent(completedOrder.id));
+      router.push(`/order-confirmation?order_id=${encodeURIComponent(completedOrder.id)}#receipt=${encodeURIComponent(order.receiptToken)}`);
       clearCart();
     } catch (error) {
       const message = describeCardFailure(error, environment);
