@@ -205,22 +205,33 @@ export async function advanceOrderStatus(id: string, requestedStatus: OrderStatu
 }
 
 export async function cleanupAbandonedOrders() {
-  const [expired] = await getDatabase().execute<ResultSetHeader>(
-    `UPDATE orders SET status = 'expired', payment_status = 'EXPIRED'
-     WHERE status = 'pending' AND created_at < UTC_TIMESTAMP(3) - INTERVAL 24 HOUR`,
-  );
   const [deleted] = await getDatabase().execute<ResultSetHeader>(
     `DELETE FROM orders WHERE status = 'expired' AND created_at < UTC_TIMESTAMP(3) - INTERVAL 90 DAY`,
   );
-  return { expired: expired.affectedRows, deleted: deleted.affectedRows };
+  return { deleted: deleted.affectedRows };
+}
+
+export async function expireVerifiedAbandonedOrder(id: string) {
+  const [result] = await getDatabase().execute<ResultSetHeader>(
+    `UPDATE orders SET status = 'expired', payment_status = 'EXPIRED'
+     WHERE id = ? AND status = 'pending' AND created_at < UTC_TIMESTAMP(3) - INTERVAL 24 HOUR`,
+    [id],
+  );
+  return result.affectedRows === 1;
+}
+
+export async function touchPendingOrder(id: string) {
+  await getDatabase().execute(
+    "UPDATE orders SET updated_at = UTC_TIMESTAMP(3) WHERE id = ? AND status = 'pending'",
+    [id],
+  );
 }
 
 export async function pendingOrdersForReconciliation(limit = 50) {
   const safeLimit = Math.min(100, Math.max(1, limit));
   const [rows] = await getDatabase().execute<OrderRow[]>(
-    `SELECT * FROM orders
-     WHERE status = 'pending' AND created_at >= UTC_TIMESTAMP(3) - INTERVAL 24 HOUR
-     ORDER BY created_at ASC LIMIT ?`, [safeLimit],
+    `SELECT * FROM orders WHERE status = 'pending'
+     ORDER BY updated_at ASC, created_at ASC LIMIT ?`, [safeLimit],
   );
   return rows.map(fromRow);
 }

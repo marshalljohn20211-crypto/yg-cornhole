@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cleanupAbandonedOrders, pendingOrdersForReconciliation, saveOrder, type StoredOrder } from "./orders";
+import { cleanupAbandonedOrders, expireVerifiedAbandonedOrder, pendingOrdersForReconciliation, saveOrder, touchPendingOrder, type StoredOrder } from "./orders";
 import { paypalRequest } from "./paypal";
 
 type PayPalCapture = {
@@ -54,24 +54,28 @@ async function reconcileOrder(order: StoredOrder) {
     await saveOrder({ ...order, status: "payment_failed", paymentStatus: "VOIDED" });
     return "failed" as const;
   }
+  if (remote.status === "CREATED" && await expireVerifiedAbandonedOrder(order.id)) {
+    return "expired" as const;
+  }
+  await touchPendingOrder(order.id);
   return "pending" as const;
 }
 
 export async function runOrderMaintenance() {
-  const pending = await pendingOrdersForReconciliation(10);
+  const pending = await pendingOrdersForReconciliation(25);
   const result = { checked: pending.length, recovered: 0, stillPending: 0, failed: 0, errors: 0, expired: 0, deleted: 0 };
   for (const order of pending) {
     try {
       const status = await reconcileOrder(order);
       if (status === "recovered") result.recovered += 1;
       else if (status === "failed") result.failed += 1;
+      else if (status === "expired") result.expired += 1;
       else result.stillPending += 1;
     } catch {
       result.errors += 1;
     }
   }
   const cleanup = await cleanupAbandonedOrders();
-  result.expired = cleanup.expired;
   result.deleted = cleanup.deleted;
   return result;
 }

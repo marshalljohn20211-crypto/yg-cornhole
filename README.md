@@ -38,7 +38,7 @@ Admin accounts and salted `scrypt` password hashes are stored in MySQL. Set a ra
 
 Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string, or provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` separately. The separate variables match GoDaddy Hosted Database secrets. Apply `db/schema.sql` for a new database. For an existing installation, apply `db/migrations/2026-09-23-order-reliability.sql` once before deploying this version. Checkout is intentionally blocked before payment when MySQL is not configured.
 
-The admin order desk supports search, status filtering, pagination, PayPal reconciliation, and controlled fulfillment stages: paid, processing, shipped, and completed. Reconciliation also expires unpaid checkouts after 24 hours and deletes expired records after 90 days. For automatic maintenance, schedule an hourly `POST` to `/api/maintenance/orders` with `Authorization: Bearer <ORDER_MAINTENANCE_SECRET>`. The database account therefore needs `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on the application tables.
+The admin order desk supports search, status filtering, pagination, PayPal reconciliation, and controlled fulfillment stages: paid, processing, shipped, and completed. Reconciliation expires checkouts older than 24 hours only after PayPal confirms they remain unapproved, and deletes expired records after 90 days. For automatic maintenance, schedule an hourly `POST` to `/api/maintenance/orders` with `Authorization: Bearer <ORDER_MAINTENANCE_SECRET>`. The database account therefore needs `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on the application tables.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

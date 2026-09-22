@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       transmissionId: requiredHeader(request, "paypal-transmission-id"),
       transmissionSig: requiredHeader(request, "paypal-transmission-sig"),
       transmissionTime: requiredHeader(request, "paypal-transmission-time"),
-    }, event);
+    }, rawBody);
     if (!verified) return Response.json({ error: "Invalid PayPal webhook signature." }, { status: 403 });
 
     const result = await processVerifiedPayPalWebhook(event);
