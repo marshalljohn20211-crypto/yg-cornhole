@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "../lib/admin-auth";
-import { listOrders, nextOrderStatus, ORDER_STATUSES, type OrderStatus } from "../lib/orders";
+import { adminStatusChanges, listOrders, ORDER_STATUSES, type OrderStatus } from "../lib/orders";
 
 export const metadata: Metadata = { title: "Orders | YG Cornhole Admin", robots: { index: false, follow: false } };
 
@@ -57,7 +57,7 @@ export default async function AdminOrders({ searchParams }: {
 
       <section className="admin-orders" aria-labelledby="orders-heading">
         {maintenance ? <p className={`admin-notice${maintenance === "error" ? " is-error" : ""}`}>{maintenance === "error" ? "PayPal reconciliation failed. Check the server logs and configuration." : `Reconciliation finished: ${maintenance.split("-")[0]} recovered, ${maintenance.split("-")[1]} expired, ${maintenance.split("-")[2]} removed, ${maintenance.split("-")[3]} errors.`}</p> : null}
-        {update ? <p className={`admin-notice${update === "error" || update === "invalid" ? " is-error" : ""}`}>{update === "error" || update === "invalid" ? "The order status could not be updated." : `Order ${update} was updated.`}</p> : null}
+        {update ? <p role={update === "error" || update === "invalid" || update === "conflict" ? "alert" : "status"} className={`admin-notice${update === "error" || update === "invalid" || update === "conflict" ? " is-error" : ""}`}>{update === "error" ? "The database rejected this status change. Check the application logs or database update permissions, then try again." : update === "invalid" ? "Choose a valid order status and try again." : update === "conflict" ? "This order changed since the page loaded. Refresh the page and check its current status." : `Order ${update} was updated.`}</p> : null}
         <div className="admin-summary"><div><span>Matching orders</span><strong>{result.total}</strong></div><p id="orders-heading">Search every recorded order, filter its current stage, and move paid orders through fulfillment.</p></div>
 
         <form className="admin-filters" action="/admin" method="get">
@@ -72,7 +72,7 @@ export default async function AdminOrders({ searchParams }: {
         ) : (
           <div className="admin-order-list">
             {result.orders.map((order) => {
-              const nextStatus = nextOrderStatus(order.status);
+              const statusChanges = adminStatusChanges(order);
               return (
                 <details className="admin-order" key={order.id}>
                   <summary>
@@ -84,7 +84,7 @@ export default async function AdminOrders({ searchParams }: {
                     <section><h2>Delivery</h2><address>{order.customer.addressLine1}<br />{order.customer.addressLine2 ? <>{order.customer.addressLine2}<br /></> : null}{order.customer.city}, {order.customer.state} {order.customer.postalCode}<br />{order.customer.countryCode === "US" ? "United States" : "Canada"}</address>{order.customer.deliveryNotes ? <p><b>Notes:</b> {order.customer.deliveryNotes}</p> : null}{order.trackingNumber ? <p><b>Tracking:</b> {order.trackingNumber}</p> : null}</section>
                     <section><h2>Payment</h2><dl><div><dt>Status</dt><dd>{order.paymentStatus}</dd></div><div><dt>PayPal order</dt><dd>{order.id}</dd></div>{order.captureId ? <div><dt>Capture</dt><dd>{order.captureId}</dd></div> : null}<div><dt>Created</dt><dd>{date(order.createdAt)}</dd></div>{order.paidAt ? <div><dt>Paid</dt><dd>{date(order.paidAt)}</dd></div> : null}{order.fulfilledAt ? <div><dt>Completed</dt><dd>{date(order.fulfilledAt)}</dd></div> : null}</dl></section>
                     <section className="admin-items"><h2>Items</h2>{order.items.map((item, index) => <div key={`${item.slug}-${index}`}><div><strong>{item.name}</strong><small>{item.size} · {item.color} · Qty {item.quantity}</small></div><span>{money(item.unitAmount * item.quantity)}</span></div>)}<dl><div><dt>Subtotal</dt><dd>{money(order.subtotal)}</dd></div><div><dt>Shipping</dt><dd>{money(order.shipping)}</dd></div><div><dt>Total</dt><dd>{money(order.total)}</dd></div></dl></section>
-                    {nextStatus ? <section className="admin-fulfillment"><h2>Next step</h2><form action={`/api/admin/orders/${encodeURIComponent(order.id)}/status`} method="post"><input type="hidden" name="status" value={nextStatus} />{nextStatus === "shipped" ? <label>Tracking number<input name="trackingNumber" required maxLength={120} /></label> : null}<button type="submit">{nextStatus === "cancelled" ? "Cancel unpaid order" : `Mark ${label(nextStatus)}`}</button></form></section> : null}
+                    {statusChanges.length ? <section className="admin-fulfillment"><h2>Update order status</h2><form action={`/api/admin/orders/${encodeURIComponent(order.id)}/status`} method="post"><label>New status<select name="status" defaultValue={statusChanges[0] === "cancelled" ? "cancelled" : ""} required><option value="" disabled>Choose a status</option>{statusChanges.map((option) => <option key={option} value={option}>{label(option)}</option>)}</select></label>{statusChanges.includes("shipped") ? <label>Tracking number <span>Required when marking shipped</span><input name="trackingNumber" maxLength={120} /></label> : null}<button type="submit">{statusChanges[0] === "cancelled" ? "Cancel unpaid order" : "Save status"}</button></form>{statusChanges[0] === "cancelled" ? <p>This only cancels an order that has not been recorded as paid.</p> : null}</section> : null}
                   </div>
                 </details>
               );

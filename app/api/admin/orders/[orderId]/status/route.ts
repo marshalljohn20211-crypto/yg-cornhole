@@ -18,7 +18,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     await advanceOrderStatus(orderId, status as OrderStatus, typeof trackingNumber === "string" ? trackingNumber : undefined);
     return adminRedirect(request, `/admin?update=${encodeURIComponent(orderId)}`);
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Order not found." || message.startsWith("Order cannot move") || message.startsWith("Order changed while")) {
+      return adminRedirect(request, "/admin?update=conflict");
+    }
+    if (message.startsWith("Enter a tracking number")) {
+      return adminRedirect(request, "/admin?update=invalid");
+    }
+    console.error("Admin order status update failed", {
+      orderId,
+      status,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+      message,
+    });
     return adminRedirect(request, "/admin?update=error");
   }
 }

@@ -173,34 +173,52 @@ export async function listOrders(options: OrderListOptions = {}) {
   return { orders: rows.map(fromRow), total, page: currentPage, pageSize, pages };
 }
 
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  paid: "processing",
-  processing: "shipped",
-  shipped: "completed",
-  pending: "cancelled",
-  payment_failed: "cancelled",
+const ADMIN_STATUS_CHANGES: Partial<Record<OrderStatus, readonly OrderStatus[]>> = {
+  pending: ["cancelled"],
+  payment_failed: ["cancelled"],
+  paid: ["processing", "shipped"],
+  processing: ["shipped"],
+  shipped: ["completed"],
 };
 
-export function nextOrderStatus(status: OrderStatus) {
-  return NEXT_STATUS[status];
+export function adminStatusChanges(order: StoredOrder): readonly OrderStatus[] {
+  if (["pending", "payment_failed"].includes(order.status) && (order.captureId || order.paidAt || order.paymentStatus === "COMPLETED")) return [];
+  if (["paid", "processing", "shipped"].includes(order.status) && !isPaidOrder(order)) return [];
+  return ADMIN_STATUS_CHANGES[order.status] ?? [];
 }
 
 export async function advanceOrderStatus(id: string, requestedStatus: OrderStatus, trackingNumber?: string) {
   const order = await getOrder(id);
   if (!order) throw new Error("Order not found.");
-  if (nextOrderStatus(order.status) !== requestedStatus) {
+  if (!adminStatusChanges(order).includes(requestedStatus)) {
     throw new Error(`Order cannot move from ${order.status} to ${requestedStatus}.`);
   }
   if (requestedStatus === "shipped" && !trackingNumber?.trim()) {
     throw new Error("Enter a tracking number before marking this order shipped.");
   }
-  const cleanTracking = trackingNumber?.trim().slice(0, 120) || null;
-  const [result] = await getDatabase().execute<ResultSetHeader>(
-    `UPDATE orders SET status = ?, tracking_number = COALESCE(?, tracking_number),
-      fulfilled_at = CASE WHEN ? = 'completed' THEN UTC_TIMESTAMP(3) ELSE fulfilled_at END
-     WHERE id = ? AND status = ?`,
-    [requestedStatus, cleanTracking, requestedStatus, id, order.status],
-  );
+  let result: ResultSetHeader;
+  if (requestedStatus === "shipped") {
+    [result] = await getDatabase().execute<ResultSetHeader>(
+      "UPDATE orders SET status = ?, tracking_number = ? WHERE id = ? AND status = ?",
+      [requestedStatus, trackingNumber!.trim().slice(0, 120), id, order.status],
+    );
+  } else if (requestedStatus === "completed") {
+    [result] = await getDatabase().execute<ResultSetHeader>(
+      "UPDATE orders SET status = ?, fulfilled_at = UTC_TIMESTAMP(3) WHERE id = ? AND status = ?",
+      [requestedStatus, id, order.status],
+    );
+  } else if (requestedStatus === "cancelled") {
+    [result] = await getDatabase().execute<ResultSetHeader>(
+      `UPDATE orders SET status = 'cancelled'
+       WHERE id = ? AND status = ? AND capture_id IS NULL AND paid_at IS NULL AND payment_status <> 'COMPLETED'`,
+      [id, order.status],
+    );
+  } else {
+    [result] = await getDatabase().execute<ResultSetHeader>(
+      "UPDATE orders SET status = ? WHERE id = ? AND status = ?",
+      [requestedStatus, id, order.status],
+    );
+  }
   if (result.affectedRows !== 1) throw new Error("Order changed while it was being updated. Refresh and try again.");
 }
 

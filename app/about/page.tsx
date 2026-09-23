@@ -22,7 +22,7 @@ export default function AboutPage() {
           <Link href="/shop">Shop the lineup <ArrowRight size={18} /></Link>
         </div>
         <div className="brand-hero__visual">
-          <Image src="/images/gallery/bag-lineup.jpeg" alt="A lineup of colorful YG Cornhole competition bags" fill priority sizes="(max-width: 820px) 100vw, 48vw" />
+          <Image src="/images/gallery/yg-market-booth.jpg" alt="YG Cornhole booth and players at a community market" fill priority sizes="(max-width: 820px) 100vw, 48vw" />
           <div><b>YG / 2027</b><strong>Player tested</strong></div>
         </div>
       </section>
@@ -42,7 +42,7 @@ export default function AboutPage() {
       </section>
 
       <section className="brand-work">
-        <div className="brand-work__image"><Image src="/images/gallery/fishing-board.jpeg" alt="Hops and Reels custom cornhole board artwork" fill sizes="(max-width: 820px) 100vw, 55vw" /></div>
+        <div className="brand-work__image"><Image src="/images/gallery/outdoors-board.jpeg" alt="Field and Stream custom cornhole board artwork" fill sizes="(max-width: 820px) 100vw, 55vw" /></div>
         <div className="brand-work__copy"><span>Custom starts here</span><h2>Bring us the story. We&apos;ll build the lane.</h2><p>Whether it begins with a team, a birthday, a business, or a sketch on your phone, we turn the idea into gear made to be played.</p><Link href="/contact">Start a custom build <ArrowRight size={18} /></Link></div>
       </section>
       <StoreFooter />
