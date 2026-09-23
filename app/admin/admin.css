@@ -8,6 +8,16 @@
 .admin-header button:hover { background: white; color: #0d1924; }
 .admin-header__actions { display: flex; gap: 9px; }
 .admin-orders { max-width: 1380px; margin: 0 auto; padding: clamp(42px, 6vw, 80px) clamp(20px, 4vw, 64px) 100px; }
+.admin-view-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.admin-view-switch a { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid #234c69; color: #234c69; background: transparent; font: 800 10px "Cascadia Mono", Consolas, monospace; text-transform: uppercase; }
+.admin-view-switch a[aria-current="page"] { color: white; background: #234c69; }
+.admin-view-switch a:focus-visible { outline: 3px solid #a73136; outline-offset: 2px; }
+.admin-demo-banner { margin: 0 0 24px; padding: 16px 18px; border-left: 4px solid #a73136; background: #fff2e7; color: #693524; font-size: 13px; line-height: 1.6; }
+.admin-demo-banner strong { display: block; }
+.admin-workflow { margin: 0 0 24px; padding: 16px 20px; border-left: 4px solid #234c69; background: #dfeaf1; color: #18374c; }
+.admin-workflow strong { display: block; margin-bottom: 4px; font: 800 10px "Cascadia Mono", Consolas, monospace; text-transform: uppercase; }
+.admin-workflow p { margin: 0; font-size: 13px; line-height: 1.6; }
+.admin-demo-tag { padding: 5px 8px; border: 1px solid #a73136; color: #842b30; font: 800 9px "Cascadia Mono", Consolas, monospace; text-transform: uppercase; }
 .admin-notice { margin: 0 0 22px; padding: 13px 16px; border-left: 4px solid #24564c; background: #dcefe9; color: #183f37; font-size: 12px; }
 .admin-notice.is-error { border-left-color: #a73136; background: #f9e8e8; color: #842b30; }
 .admin-summary { margin-bottom: 28px; display: grid; grid-template-columns: 240px 1fr; align-items: end; gap: 30px; }
@@ -24,6 +34,8 @@
 .admin-order { background: white; border: 1px solid rgba(13,21,30,.15); border-left: 5px solid #234c69; }
 .admin-order[open] { border-left-color: #a73136; box-shadow: 0 22px 45px rgba(13,21,30,.08); }
 .admin-order summary { min-height: 94px; padding: 19px 24px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 25px; list-style: none; }
+.admin-order summary { cursor: pointer; }
+.admin-order summary:focus-visible { outline: 3px solid #a73136; outline-offset: -4px; }
 .admin-order summary::-webkit-details-marker { display: none; }
 .admin-order summary > div { min-width: 0; display: flex; align-items: center; gap: 15px; }
 .admin-order summary > div:last-child { justify-content: flex-end; }
@@ -52,11 +64,13 @@
 .admin-items > dl { width: min(100%, 330px); margin: 16px 0 0 auto; }
 .admin-items > dl div:last-child { margin-top: 5px; padding-top: 12px; border-top: 2px solid #0d151e; font-weight: 800; }
 .admin-fulfillment { grid-column: 1 / -1; padding: 20px; background: #eef1f3; border-left: 4px solid #234c69; }
-.admin-fulfillment form { display: flex; align-items: end; gap: 12px; }
+.admin-fulfillment form { display: flex; align-items: end; gap: 12px; margin-top: 16px; }
 .admin-fulfillment label { flex: 1; }
 .admin-fulfillment label span { color: #65717c; font: 500 11px Arial, sans-serif; text-transform: none; }
 .admin-fulfillment p { margin: 12px 0 0; }
+.admin-demo-options { padding-top: 10px; border-top: 1px solid rgba(13,21,30,.16); font-weight: 700; }
 .admin-fulfillment button { cursor: pointer; }
+.admin-fulfillment button.is-destructive { background: #a73136; }
 .admin-fulfillment button:focus-visible, .admin-fulfillment select:focus-visible, .admin-fulfillment input:focus-visible { outline: 3px solid #a73136; outline-offset: 2px; }
 .admin-pagination { margin-top: 25px; display: flex; align-items: center; justify-content: center; gap: 18px; }
 .admin-pagination a { min-height: 42px; padding: 0 16px; display: inline-flex; align-items: center; background: #0d1924; color: white; font: 800 9px "Cascadia Mono", Consolas, monospace; text-transform: uppercase; }

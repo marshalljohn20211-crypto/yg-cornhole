@@ -177,7 +177,7 @@ const ADMIN_STATUS_CHANGES: Partial<Record<OrderStatus, readonly OrderStatus[]>>
   pending: ["cancelled"],
   payment_failed: ["cancelled"],
   paid: ["processing", "shipped"],
-  processing: ["shipped"],
+  processing: ["paid", "shipped"],
   shipped: ["completed"],
 };
 
