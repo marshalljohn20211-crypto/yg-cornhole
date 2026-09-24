@@ -44,6 +44,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           <h1 id="product-title">{product.name}</h1>
           <div className="product-price-row"><strong>{formatPrice(product.price)}</strong><span><Star size={14} fill="currentColor" /> 5.0 / player rated</span></div>
           <p className="product-description">{product.description}</p>
+          {isBoard ? <p className="product-description">Shipping: $100 per board ordered, added at checkout.</p> : null}
 
           {isBag && product.speedFast && product.speedControl && (
             <div className="product-speed-profile" aria-label={`${product.speedFast} fast side and ${product.speedControl} control side`}>
@@ -75,7 +76,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           <p className="cart-status" aria-live="polite">{status}</p>
 
           <div className="product-assurances">
-            <span><Truck size={20} /><b>{isBoard ? "Build delivery" : "Tracked delivery"}</b>{isBoard ? "Confirmed with your custom order" : "Delivery options shown at checkout"}</span>
+            <span><Truck size={20} /><b>{isBoard ? "Board shipping" : "Free shipping"}</b>{isBoard ? "$100 per board, added at checkout" : "No shipping charge at checkout"}</span>
             <span><ShieldCheck size={20} /><b>Built with care</b>Checked before it leaves the shop</span>
           </div>
         </div>

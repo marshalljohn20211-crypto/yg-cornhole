@@ -1,4 +1,4 @@
-import { getProduct } from "../data/products";
+import { getProduct, shippingCentsForCart } from "../data/products";
 
 export type CheckoutLineInput = {
   slug: string;
@@ -44,7 +44,7 @@ export function priceCheckout(rawLines: unknown) {
   });
 
   const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-  const shipping = 995;
+  const shipping = shippingCentsForCart(lines);
 
   return { lines, subtotal, shipping, total: subtotal + shipping };
 }

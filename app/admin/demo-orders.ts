@@ -41,8 +41,8 @@ export function demoOrders(): StoredOrder[] {
       },
       items: [{ slug: "demo-item", name: "Sample product", quantity: 1, size: "M", color: "Blue", unitAmount: 2499 }],
       subtotal: 2499,
-      shipping: 995,
-      total: 3494,
+      shipping: 0,
+      total: 2499,
       currency: "USD",
     };
   });

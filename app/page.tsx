@@ -21,16 +21,15 @@ import HomeMotion from "./ui/home-motion";
 import SiteHeader from "./ui/site-header";
 
 const products = [
-  { name: "Phenom X", profile: "Quick / composed", speed: "7 / 4.5", price: "$89.99", image: "/images/shop/phenom-x.jpeg", alt: "Patriotic skull Phenom X cornhole bags", slug: "phenom-x-bags" },
-  { name: "Felon X", profile: "True balance", speed: "7 / 5", price: "$89.99", image: "/images/shop/felon-x.jpeg", alt: "Patriotic Felon X cornhole bags", slug: "felon-x-bags" },
-  { name: "Menace X", profile: "Block / finish", speed: "8 / 3", price: "$89.99", image: "/images/shop/menace-x.jpeg", alt: "Patriotic Menace X cornhole bags", slug: "menace-x-bags" },
-  { name: "Prodigy X", profile: "Versatile pace", speed: "8 / 5", price: "$89.99", image: "/images/shop/prodigy-x.jpeg", alt: "Patriotic Prodigy X cornhole bags", slug: "prodigy-x-bags" },
+  { name: "Phenom X", profile: "Quick / composed", speed: "7 / 4.5", price: "$79.99", image: "/images/shop/phenom-x.jpeg", alt: "Patriotic skull Phenom X cornhole bags", slug: "phenom-x-bags" },
+  { name: "Felon X", profile: "True balance", speed: "7 / 5", price: "$79.99", image: "/images/shop/felon-x.jpeg", alt: "Patriotic Felon X cornhole bags", slug: "felon-x-bags" },
+  { name: "Menace X", profile: "Block / finish", speed: "8 / 3", price: "$79.99", image: "/images/shop/menace-x.jpeg", alt: "Patriotic Menace X cornhole bags", slug: "menace-x-bags" },
+  { name: "Prodigy X", profile: "Versatile pace", speed: "8 / 5", price: "$79.99", image: "/images/shop/prodigy-x.jpeg", alt: "Patriotic Prodigy X cornhole bags", slug: "prodigy-x-bags" },
 ];
 
 const customWork = [
   { src: "/images/gallery/custom-board-detroit.jpeg", title: "Motor City Matchup", type: "Custom board set", description: "A city-first set built around hometown rivalries and league-night energy." },
-  { src: "/images/gallery/eagles-board.jpeg", title: "Eagles 3373", type: "Club boards", description: "A clean club build with patriotic detail and high-contrast center artwork." },
-  { src: "/images/gallery/outdoors-board.jpeg", title: "Field & Stream", type: "Custom concept", description: "Full-coverage outdoor artwork made for the cabin and the tournament lane." },
+  { src: "/images/shop/custom-boards-knights.png", title: "Custom Boards", type: "Custom build", description: "A bold Knights design in burgundy, black, and white." },
 ];
 
 const faqs = [

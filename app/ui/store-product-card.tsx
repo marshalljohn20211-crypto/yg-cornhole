@@ -14,6 +14,7 @@ export default function StoreProductCard({ product }: { product: Product }) {
         <p>{product.eyebrow}</p>
         <h2><Link href={`/shop/${product.slug}`}>{product.name}</Link></h2>
         <div><strong>{formatPrice(product.price)}</strong><Link href={`/shop/${product.slug}`}>View product <ArrowUpRight size={16} /></Link></div>
+        {product.category === "custom-boards" ? <small className="store-product-card__shipping">+$100 shipping per board at checkout</small> : null}
       </div>
     </article>
   );
