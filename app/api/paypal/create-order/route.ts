@@ -4,6 +4,7 @@ import { cleanShipping } from "../../../lib/order-details";
 import { assertOrderStorageConfigured, getOrderByCheckoutKey, saveOrder } from "../../../lib/orders";
 import { PayPalRequestError, paypalRequest } from "../../../lib/paypal";
 import { assertReceiptSigningConfigured, createReceiptToken } from "../../../lib/receipt";
+import { getCatalog } from "../../../lib/catalog";
 
 type CreatedOrder = { id: string; status: string };
 
@@ -13,7 +14,8 @@ export async function POST(request: Request) {
     if (typeof body.checkoutAttemptId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.checkoutAttemptId)) {
       return Response.json({ error: "The checkout attempt is invalid.", code: "CHECKOUT_ATTEMPT_INVALID" }, { status: 400 });
     }
-    const cart = priceCheckout(body.items);
+    const catalog = await getCatalog();
+    const cart = priceCheckout(body.items, catalog.products);
     const shipping = cleanShipping(body.shipping);
     assertOrderStorageConfigured();
     assertReceiptSigningConfigured();
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
           },
           items: cart.lines.map((line) => ({
             name: line.name.slice(0, 127),
-            description: `${line.size} / ${line.color}`.slice(0, 127),
+            description: `${line.size} / ${line.color}${Object.entries(line.options ?? {}).map(([name, value]) => ` / ${name}: ${value}`).join("")}`.slice(0, 127),
             sku: line.slug.slice(0, 127),
             category: "PHYSICAL_GOODS",
             quantity: String(line.quantity),

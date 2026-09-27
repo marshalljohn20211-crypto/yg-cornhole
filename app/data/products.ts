@@ -1,4 +1,8 @@
-export type ProductCategory = "t-shirts" | "performance-jerseys" | "hoodies" | "cornhole-bags" | "custom-boards";
+export type ProductCategory = string;
+
+export type Category = { slug: string; name: string; description: string; shippingCents: number };
+
+export type ProductOption = { name: string; values: string[] };
 
 export type Product = {
   slug: string;
@@ -16,14 +20,16 @@ export type Product = {
   badge?: string;
   speedFast?: number;
   speedControl?: number;
+  customOptions?: ProductOption[];
+  shippingCents?: number;
 };
 
-export const categoryOrder: { slug: ProductCategory; name: string; description: string }[] = [
-  { slug: "t-shirts", name: "T-Shirts", description: "Soft ring-spun cotton in core and heritage graphics." },
-  { slug: "performance-jerseys", name: "Performance Jerseys", description: "Full-print team jerseys made for league and tournament play." },
-  { slug: "hoodies", name: "Hoodies", description: "Layer-ready YG apparel for cool nights on the boards." },
-  { slug: "cornhole-bags", name: "Cornhole Bags", description: "ACL-style sets with distinct artwork and competition feel." },
-  { slug: "custom-boards", name: "Custom Boards", description: "Regulation builds carrying custom artwork from edge to edge." },
+export const categoryOrder: Category[] = [
+  { slug: "t-shirts", name: "T-Shirts", description: "Soft ring-spun cotton in core and heritage graphics.", shippingCents: 0 },
+  { slug: "performance-jerseys", name: "Performance Jerseys", description: "Full-print team jerseys made for league and tournament play.", shippingCents: 0 },
+  { slug: "hoodies", name: "Hoodies", description: "Layer-ready YG apparel for cool nights on the boards.", shippingCents: 0 },
+  { slug: "cornhole-bags", name: "Cornhole Bags", description: "ACL-style sets with distinct artwork and competition feel.", shippingCents: 0 },
+  { slug: "custom-boards", name: "Custom Boards", description: "Regulation builds carrying custom artwork from edge to edge.", shippingCents: 10_000 },
 ];
 
 const tShirtFeatures = [
@@ -329,19 +335,28 @@ export const products: Product[] = [
     features: boardFeatures,
     colors: ["Burgundy / Black"],
     sizes: ["Single board", "Regulation set"],
+    customOptions: [{ name: "Dimensions", values: ["24 × 48 in (regulation)"] }],
     badge: "Custom build",
   },
 ];
 
 export const BOARD_SHIPPING_CENTS = 10_000;
 
-export function shippingCentsForCart(lines: ReadonlyArray<{ slug: string; quantity: number }>) {
+export function shippingCentsForCart(lines: ReadonlyArray<{ slug: string; quantity: number }>, catalog: readonly Product[] = products) {
   return lines.reduce((total, line) =>
-    total + (getProduct(line.slug)?.category === "custom-boards" ? BOARD_SHIPPING_CENTS * line.quantity : 0), 0);
+    total + (catalog.find((product) => product.slug === line.slug)?.shippingCents ?? (getProduct(line.slug)?.category === "custom-boards" ? BOARD_SHIPPING_CENTS : 0)) * line.quantity, 0);
 }
 
 export function getProduct(slug: string) {
   return products.find((product) => product.slug === slug);
+}
+
+export function validProductSelection(product: Product, selection: { size: string; color: string; options?: Record<string, string> }) {
+  if (!product.sizes.includes(selection.size) || !product.colors.includes(selection.color)) return false;
+  const configured = product.customOptions ?? [];
+  const selected = selection.options ?? {};
+  if (Object.keys(selected).some((name) => !configured.some((option) => option.name === name))) return false;
+  return configured.every((option) => option.values.includes(selected[option.name] ?? (option.values.length === 1 ? option.values[0] : "")));
 }
 
 export function formatPrice(price: number) {

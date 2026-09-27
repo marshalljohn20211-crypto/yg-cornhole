@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ShopCatalog from "../ui/shop-catalog";
 import SiteHeader from "../ui/site-header";
 import StoreFooter from "../ui/store-footer";
-import { categoryOrder, type ProductCategory } from "../data/products";
+import { getCatalog } from "../lib/catalog";
 
 export const metadata: Metadata = {
   title: "Shop Bags, Boards & Apparel | YG Cornhole",
@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const { category } = await searchParams;
-  const validCategory = categoryOrder.some((item) => item.slug === category) ? category as ProductCategory : "all";
+  const catalog = await getCatalog();
+  const validCategory = catalog.categories.some((item) => item.slug === category) ? category : "all";
 
   return (
     <main className="store-page" id="main-content">
@@ -23,7 +24,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         </div>
         <p>Competition bags, regulation custom boards, everyday cotton, and full-print team gear—all carrying the same player-first point of view.</p>
       </section>
-      <ShopCatalog initialCategory={validCategory} />
+      <ShopCatalog key={validCategory} initialCategory={validCategory} products={catalog.products} categories={catalog.categories} />
       <StoreFooter />
     </main>
   );

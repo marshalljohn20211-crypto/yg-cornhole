@@ -3,26 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { formatPrice, products, shippingCentsForCart } from "../data/products";
+import { formatPrice, shippingCentsForCart, validProductSelection, type Product } from "../data/products";
 import { useCart } from "./cart-provider";
 import PayPalCheckout from "./paypal-checkout";
 
 export default function CartPage({
   paypalEnvironment,
   paypalClientId,
+  products,
 }: {
   paypalEnvironment: "sandbox" | "live";
   paypalClientId: string;
+  products: Product[];
 }) {
   const { items, updateQuantity, removeItem, clearCart } = useCart();
   const lines = items.flatMap((line) => {
     const product = products.find((candidate) => candidate.slug === line.slug);
-    return product ? [{ ...line, product }] : [];
+    return product && validProductSelection(product, line) ? [{ ...line, product }] : [];
   });
-  const unavailableItems = items.filter((line) => !products.some((product) => product.slug === line.slug));
-  const availableItems = items.filter((line) => products.some((product) => product.slug === line.slug));
+  const unavailableItems = items.filter((line) => !products.some((product) => product.slug === line.slug && validProductSelection(product, line)));
+  const availableItems = items.filter((line) => products.some((product) => product.slug === line.slug && validProductSelection(product, line)));
   const subtotal = lines.reduce((total, line) => total + line.product.price * line.quantity, 0);
-  const shipping = shippingCentsForCart(lines) / 100;
+  const shipping = shippingCentsForCart(lines, products) / 100;
   const total = subtotal + shipping;
 
   if (lines.length === 0) {
@@ -48,7 +50,7 @@ export default function CartPage({
             <div className="cart-line__copy">
               <span>{line.product.categoryLabel}</span>
               <h2><Link href={`/shop/${line.product.slug}`}>{line.product.name}</Link></h2>
-              <p>{line.size} · {line.color}</p>
+              <p>{line.size} · {line.color}{Object.entries(line.options ?? {}).map(([name, value]) => ` · ${name}: ${value}`).join("")}</p>
               <strong>{formatPrice(line.product.price)}</strong>
             </div>
             <div className="cart-line__actions">
@@ -66,7 +68,7 @@ export default function CartPage({
       <aside className="cart-summary">
         <span>Order summary</span>
         <h2>Ready for the lane.</h2>
-        <dl><div><dt>Subtotal</dt><dd>{formatPrice(subtotal)}</dd></div><div><dt>Shipping{shipping > 0 ? " (boards)" : " (free)"}</dt><dd>{formatPrice(shipping)}</dd></div><div><dt>Total</dt><dd>{formatPrice(total)}</dd></div></dl>
+        <dl><div><dt>Subtotal</dt><dd>{formatPrice(subtotal)}</dd></div><div><dt>Shipping{shipping > 0 ? "" : " (free)"}</dt><dd>{formatPrice(shipping)}</dd></div><div><dt>Total</dt><dd>{formatPrice(total)}</dd></div></dl>
         {unavailableItems.length > 0 ? <p>Some saved products are no longer available. <button type="button" onClick={() => unavailableItems.forEach((item) => removeItem(item.key))}>Remove them from your cart</button></p> : null}
         <PayPalCheckout environment={paypalEnvironment} clientId={paypalClientId} items={availableItems} />
         <p>Choose PayPal or enter a debit or credit card. Your payment details are handled securely by PayPal.</p>

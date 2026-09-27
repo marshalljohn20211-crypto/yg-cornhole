@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Gauge, ShieldCheck, Target } from "lucide-react";
-import { formatPrice, products } from "../data/products";
+import { connection } from "next/server";
+import { formatPrice } from "../data/products";
+import { getCatalog } from "../lib/catalog";
 import SiteHeader from "../ui/site-header";
 import StoreFooter from "../ui/store-footer";
 
 export const metadata: Metadata = {
   title: "ACL Bags & Speed Guide | YG Cornhole",
-  description: "Compare the fast and control-side speeds of the Phenom X, Felon X, Menace X, Prodigy X, and Hellion X.",
+  description: "Compare fast and control-side speeds in YG Cornhole's current competition bag lineup.",
 };
 
 const feelCopy: Record<string, { callout: string; use: string }> = {
@@ -19,8 +21,11 @@ const feelCopy: Record<string, { callout: string; use: string }> = {
   "hellion-x-bags": { callout: "Shape and recover", use: "For a fast finish with enough grip to work the lane." },
 };
 
-export default function AclBagsPage() {
-  const aclBags = products.filter((product) => product.category === "cornhole-bags" && product.speedFast && product.speedControl);
+export default async function AclBagsPage() {
+  await connection();
+  const catalog = await getCatalog();
+  const aclBags = catalog.products.filter((product) => product.category === "cornhole-bags" && product.speedFast && product.speedControl);
+  const heroBag = aclBags[0];
 
   return (
     <main className="acl-page" id="main-content">
@@ -29,17 +34,17 @@ export default function AclBagsPage() {
       <section className="acl-hero" aria-labelledby="acl-title">
         <div className="acl-hero__copy">
           <span>YG / ACL bag lineup</span>
-          <h1 id="acl-title">One throw.<br />Five ways to finish.</h1>
+          <h1 id="acl-title">One throw.<br />Find your finish.</h1>
           <p>Compare both sides before you commit. The first number is the fast side; the second is the control side.</p>
           <div className="acl-hero__actions">
-            <Link href="#compare">Compare all five <ArrowRight size={17} /></Link>
+            <Link href="#compare">Compare bags <ArrowRight size={17} /></Link>
             <Link href="/shop?category=cornhole-bags">Shop every bag</Link>
           </div>
         </div>
-        <div className="acl-hero__visual">
-          <Image src="/images/shop/felon-x.jpeg" alt="Patriotic Felon X ACL cornhole bag set" fill priority sizes="(max-width: 820px) 100vw, 48vw" />
-          <div><span>Fast / control</span><strong>7 / 5</strong><b>Felon X</b></div>
-        </div>
+        {heroBag ? <div className="acl-hero__visual">
+          <Image src={heroBag.image} alt={heroBag.alt} fill priority sizes="(max-width: 820px) 100vw, 48vw" />
+          <div><span>Fast / control</span><strong>{heroBag.speedFast} / {heroBag.speedControl}</strong><b>{heroBag.name}</b></div>
+        </div> : null}
       </section>
 
       <section className="acl-legend" aria-label="How to read bag speeds">

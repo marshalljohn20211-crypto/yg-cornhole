@@ -30,6 +30,7 @@ export type StoredOrder = {
     quantity: number;
     size: string;
     color: string;
+    options?: Record<string, string>;
     unitAmount: number;
   }>;
   subtotal: number;

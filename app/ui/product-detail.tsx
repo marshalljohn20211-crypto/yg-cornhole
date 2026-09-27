@@ -11,6 +11,7 @@ import { useCart } from "./cart-provider";
 export default function ProductDetail({ product }: { product: Product }) {
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0]);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries((product.customOptions ?? []).map((option) => [option.name, option.values[0]])));
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState("");
   const { addItem } = useCart();
@@ -19,7 +20,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   const careDetails = isBoard ? "finish, durability, and repeatable play" : "identity, comfort, and repeat use";
 
   function addToCart() {
-    addItem({ slug: product.slug, size, color, quantity });
+    addItem({ slug: product.slug, size, color, quantity, options: selectedOptions });
     setStatus(`${quantity} × ${product.name} added to your cart.`);
     toast.success(`${quantity} × ${product.name} added to your cart`, {
       toastId: `${product.slug}:${size}:${color}`,
@@ -44,7 +45,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           <h1 id="product-title">{product.name}</h1>
           <div className="product-price-row"><strong>{formatPrice(product.price)}</strong><span><Star size={14} fill="currentColor" /> 5.0 / player rated</span></div>
           <p className="product-description">{product.description}</p>
-          {isBoard ? <p className="product-description">Shipping: $100 per board ordered, added at checkout.</p> : null}
+          {product.shippingCents ? <p className="product-description">Shipping: {formatPrice(product.shippingCents / 100)} per item, added at checkout.</p> : null}
 
           {isBag && product.speedFast && product.speedControl && (
             <div className="product-speed-profile" aria-label={`${product.speedFast} fast side and ${product.speedControl} control side`}>
@@ -65,6 +66,8 @@ export default function ProductDetail({ product }: { product: Product }) {
             <div>{product.colors.map((option) => <button type="button" className={color === option ? "is-selected" : ""} onClick={() => setColor(option)} key={option}><i aria-hidden="true" />{option}</button>)}</div>
           </fieldset>
 
+          {(product.customOptions ?? []).map((option) => <fieldset className="product-option" key={option.name}><legend>{option.name} <b>{selectedOptions[option.name]}</b></legend><div>{option.values.map((value) => <button type="button" className={selectedOptions[option.name] === value ? "is-selected" : ""} onClick={() => setSelectedOptions((current) => ({ ...current, [option.name]: value }))} key={value}>{value}</button>)}</div></fieldset>)}
+
           <div className="product-purchase-row">
             <div className="quantity-control" aria-label="Quantity selector">
               <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="Decrease quantity"><Minus size={16} /></button>
@@ -76,7 +79,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           <p className="cart-status" aria-live="polite">{status}</p>
 
           <div className="product-assurances">
-            <span><Truck size={20} /><b>{isBoard ? "Board shipping" : "Free shipping"}</b>{isBoard ? "$100 per board, added at checkout" : "No shipping charge at checkout"}</span>
+            <span><Truck size={20} /><b>{product.shippingCents ? "Shipping" : "Free shipping"}</b>{product.shippingCents ? `${formatPrice(product.shippingCents / 100)} per item at checkout` : "No shipping charge at checkout"}</span>
             <span><ShieldCheck size={20} /><b>Built with care</b>Checked before it leaves the shop</span>
           </div>
         </div>

@@ -8,6 +8,7 @@ export type CartLine = {
   quantity: number;
   size: string;
   color: string;
+  options?: Record<string, string>;
 };
 
 type CartContextValue = {
@@ -60,7 +61,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     items,
     count: items.reduce((total, item) => total + item.quantity, 0),
     addItem: (item) => {
-      const key = `${item.slug}:${item.size}:${item.color}`;
+      const key = `${item.slug}:${item.size}:${item.color}:${JSON.stringify(item.options ?? {})}`;
       const current = readCart();
       const existing = current.find((line) => line.key === key);
       emitCart(existing

@@ -15,7 +15,7 @@ function receiptText(order: NonNullable<Awaited<ReturnType<typeof getOrder>>>) {
   ].filter(Boolean);
   const itemLines = order.items.flatMap((item) => [
     `${item.quantity} x ${item.name}`,
-    `    ${item.size} / ${item.color} @ ${money(item.unitAmount)} = ${money(item.unitAmount * item.quantity)}`,
+    `    ${item.size} / ${item.color}${Object.entries(item.options ?? {}).map(([name, value]) => ` / ${name}: ${value}`).join("")} @ ${money(item.unitAmount)} = ${money(item.unitAmount * item.quantity)}`,
   ]);
 
   return [

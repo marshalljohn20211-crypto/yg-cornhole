@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
+import { formatPrice } from "./data/products";
+import { getCatalog } from "./lib/catalog";
 import {
   ArrowRight,
   BadgeCheck,
@@ -20,11 +23,11 @@ import {
 import HomeMotion from "./ui/home-motion";
 import SiteHeader from "./ui/site-header";
 
-const products = [
-  { name: "Phenom X", profile: "Quick / composed", speed: "7 / 4.5", price: "$79.99", image: "/images/shop/phenom-x.jpeg", alt: "Patriotic skull Phenom X cornhole bags", slug: "phenom-x-bags" },
-  { name: "Felon X", profile: "True balance", speed: "7 / 5", price: "$79.99", image: "/images/shop/felon-x.jpeg", alt: "Patriotic Felon X cornhole bags", slug: "felon-x-bags" },
-  { name: "Menace X", profile: "Block / finish", speed: "8 / 3", price: "$79.99", image: "/images/shop/menace-x.jpeg", alt: "Patriotic Menace X cornhole bags", slug: "menace-x-bags" },
-  { name: "Prodigy X", profile: "Versatile pace", speed: "8 / 5", price: "$79.99", image: "/images/shop/prodigy-x.jpeg", alt: "Patriotic Prodigy X cornhole bags", slug: "prodigy-x-bags" },
+const featuredBags = [
+  { slug: "phenom-x-bags", profile: "Quick / composed", speed: "7 / 4.5" },
+  { slug: "felon-x-bags", profile: "True balance", speed: "7 / 5" },
+  { slug: "menace-x-bags", profile: "Block / finish", speed: "8 / 3" },
+  { slug: "prodigy-x-bags", profile: "Versatile pace", speed: "8 / 5" },
 ];
 
 const customWork = [
@@ -39,7 +42,13 @@ const faqs = [
   ["Do you make gear for leagues and events?", "We can coordinate boards, bags, jerseys, mini awards, and event graphics so your tournament or league looks like one complete program."],
 ];
 
-export default function Home() {
+export default async function Home() {
+  await connection();
+  const catalog = await getCatalog();
+  const products = featuredBags.flatMap((featured) => {
+    const product = catalog.products.find((item) => item.slug === featured.slug);
+    return product ? [{ ...product, ...featured, price: formatPrice(product.price) }] : [];
+  });
   return (
     <main id="top">
       <HomeMotion />

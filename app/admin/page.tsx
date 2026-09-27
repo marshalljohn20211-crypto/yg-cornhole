@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import AdminHeader from "./admin-header";
 import { demoOrders } from "./demo-orders";
 import { isAdminAuthenticated } from "../lib/admin-auth";
 import { adminStatusChanges, listOrders, ORDER_STATUSES, type OrderStatus } from "../lib/orders";
@@ -64,13 +65,7 @@ export default async function AdminOrders({ searchParams }: {
 
   return (
     <main className="admin-shell">
-      <header className="admin-header">
-        <div><div className="admin-mark" aria-hidden="true">YG</div><div><span>Private order desk</span><h1>Orders</h1></div></div>
-        <div className="admin-header__actions">
-          {!demo ? <form action="/api/admin/orders/maintenance" method="post"><button type="submit">Reconcile PayPal</button></form> : null}
-          <form action="/api/admin/logout" method="post"><button type="submit">Sign out</button></form>
-        </div>
-      </header>
+      <AdminHeader active="orders" reconcile={!demo} />
 
       <section className="admin-orders" aria-labelledby="orders-heading">
         <nav className="admin-view-switch" aria-label="Order view"><Link href="/admin" aria-current={!demo ? "page" : undefined}>Live orders</Link><Link href="/admin?demo=1" aria-current={demo ? "page" : undefined}>Demo orders</Link></nav>
@@ -104,7 +99,7 @@ export default async function AdminOrders({ searchParams }: {
                     <section><h2>Customer</h2><dl><div><dt>Name</dt><dd>{order.customer.fullName}</dd></div><div><dt>Email</dt><dd>{demo ? order.customer.email : <a href={`mailto:${order.customer.email}`}>{order.customer.email}</a>}</dd></div><div><dt>Contact</dt><dd>{demo ? order.customer.phone : <a href={`tel:${order.customer.phone}`}>{order.customer.phone}</a>}</dd></div></dl></section>
                     <section><h2>Delivery</h2><address>{order.customer.addressLine1}<br />{order.customer.addressLine2 ? <>{order.customer.addressLine2}<br /></> : null}{order.customer.city}, {order.customer.state} {order.customer.postalCode}<br />{order.customer.countryCode === "US" ? "United States" : "Canada"}</address>{order.customer.deliveryNotes ? <p><b>Notes:</b> {order.customer.deliveryNotes}</p> : null}{order.trackingNumber ? <p><b>Tracking:</b> {order.trackingNumber}</p> : null}</section>
                     <section><h2>Payment</h2><dl><div><dt>Status</dt><dd>{order.paymentStatus}</dd></div><div><dt>PayPal order</dt><dd>{demo ? "Sample only" : order.id}</dd></div>{order.captureId && !demo ? <div><dt>Capture</dt><dd>{order.captureId}</dd></div> : null}<div><dt>Created</dt><dd>{date(order.createdAt)}</dd></div>{order.paidAt ? <div><dt>Paid</dt><dd>{date(order.paidAt)}</dd></div> : null}{order.fulfilledAt ? <div><dt>Completed</dt><dd>{date(order.fulfilledAt)}</dd></div> : null}</dl></section>
-                    <section className="admin-items"><h2>Items</h2>{order.items.map((item, index) => <div key={`${item.slug}-${index}`}><div><strong>{item.name}</strong><small>{item.size} · {item.color} · Qty {item.quantity}</small></div><span>{money(item.unitAmount * item.quantity)}</span></div>)}<dl><div><dt>Subtotal</dt><dd>{money(order.subtotal)}</dd></div><div><dt>Shipping</dt><dd>{money(order.shipping)}</dd></div><div><dt>Total</dt><dd>{money(order.total)}</dd></div></dl></section>
+                    <section className="admin-items"><h2>Items</h2>{order.items.map((item, index) => <div key={`${item.slug}-${index}`}><div><strong>{item.name}</strong><small>{item.size} · {item.color}{Object.entries(item.options ?? {}).map(([name, value]) => ` · ${name}: ${value}`).join("")} · Qty {item.quantity}</small></div><span>{money(item.unitAmount * item.quantity)}</span></div>)}<dl><div><dt>Subtotal</dt><dd>{money(order.subtotal)}</dd></div><div><dt>Shipping</dt><dd>{money(order.shipping)}</dd></div><div><dt>Total</dt><dd>{money(order.total)}</dd></div></dl></section>
                     <section className="admin-fulfillment"><h2>{demo ? "What happens next" : "Update order status"}</h2><p>{statusHelp(order.status)}</p>{demo ? <p className="admin-demo-options">{statusChanges.length ? `Available actions: ${statusChanges.map(label).join(" or ")}.` : "No manual update is available in this state."} This example is read-only.</p> : statusChanges.length ? <form action={`/api/admin/orders/${encodeURIComponent(order.id)}/status`} method="post"><label>New status<select name="status" defaultValue="" required><option value="" disabled>Choose a status</option>{statusChanges.map((option) => <option key={option} value={option}>{label(option)}</option>)}</select></label>{statusChanges.includes("shipped") ? <label>Tracking number <span>Required when marking shipped</span><input name="trackingNumber" maxLength={120} /></label> : null}<button className={statusChanges[0] === "cancelled" ? "is-destructive" : undefined} type="submit">{statusChanges[0] === "cancelled" ? "Cancel unpaid order" : "Save status"}</button></form> : null}</section>
                   </div>
                 </details>

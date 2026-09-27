@@ -20,7 +20,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Copy `.env.example` to `.env.local` and add the PayPal REST app credentials directly on the server. Keep `PAYPAL_ENV=sandbox` while testing, then use `PAYPAL_ENV=live` with the live credentials at deployment. Never expose or commit `PAYPAL_CLIENT_SECRET`.
 
-The cart offers PayPal and PayPal-hosted debit or credit card fields. It creates and captures PayPal Orders v2 payments through server-only route handlers. Product prices are recalculated from `app/data/products.ts`; totals sent by the browser are not trusted.
+The cart offers PayPal and PayPal-hosted debit or credit card fields. It creates and captures PayPal Orders v2 payments through server-only route handlers. Product prices and options are recalculated from the current server-side catalog; totals sent by the browser are not trusted.
 
 After a server-verified capture, the confirmation screen offers a private downloadable text receipt and a print-friendly confirmation. Set a stable `RECEIPT_SECRET` of at least 32 characters in production so existing receipt links remain valid if PayPal or admin credentials are rotated. If omitted, receipt signing falls back to `ADMIN_SESSION_SECRET` or `PAYPAL_CLIENT_SECRET`.
 
@@ -39,6 +39,14 @@ Admin accounts and salted `scrypt` password hashes are stored in MySQL. Set a ra
 Orders are stored in MySQL or compatible MariaDB. Set `DATABASE_URL` to the server-side connection string, or provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` separately. The separate variables match GoDaddy Hosted Database secrets. Apply `db/schema.sql` for a new database. For an existing installation, apply `db/migrations/2026-09-23-order-reliability.sql` once before deploying this version. Checkout is intentionally blocked before payment when MySQL is not configured.
 
 The admin order desk supports search, status filtering, pagination, PayPal reconciliation, and controlled fulfillment stages: paid, processing, shipped, and completed. Reconciliation expires checkouts older than 24 hours only after PayPal confirms they remain unapproved, and deletes expired records after 90 days. For automatic maintenance, schedule an hourly `POST` to `/api/maintenance/orders` with `Authorization: Bearer <ORDER_MAINTENANCE_SECRET>`. The database account therefore needs `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on the application tables.
+
+## Catalog CMS
+
+Before deploying catalog editing to an existing database, apply **only** `db/migrations/2026-09-26-catalog-cms.sql`. It adds three tables without deleting or changing orders or administrator users. Do not import the full `db/schema.sql` over a live database. The public store continues to use its built-in catalog until the new tables exist; the admin editor then becomes available at `/admin/products` and `/admin/categories`.
+
+Admins can create, edit, and archive products and categories. Existing product and category slugs remain fixed when edited so saved links keep working. Archived products disappear from the shop, while historical orders retain the name, selected options, price, and shipping charged at purchase. Category shipping is a per-product-unit amount. Product forms support sizes/configurations, colors/finishes, and one additional named choice (for example board dimensions). Product images may use an existing `/images/` path or an uploaded JPG, PNG, WebP, or AVIF file under 2 MB; uploads are stored in MySQL, not the deployment filesystem. The MySQL user needs privileges on the new `catalog_*` tables, and the server's MySQL packet limit must allow a 2 MB image.
+
+The shop shows nine products per page. The homepage and ACL bag page read current catalog prices and listings; checkout validates every selected option against the current catalog before creating a PayPal order.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
