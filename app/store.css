@@ -214,6 +214,13 @@
 .order-confirmation__actions button { min-height: 48px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--teal-bright); background: var(--teal-bright); color: #0d1924; font: 700 10px var(--font-mono), monospace; text-transform: uppercase; cursor: pointer; }
 .order-confirmation__actions button.is-secondary { border-color: rgba(255,255,255,.28); background: transparent; color: white; }
 .order-confirmation__actions button:disabled { opacity: .6; cursor: wait; }
+.order-confirmation__receipt { width: min(100%, 680px); margin-top: 28px; padding: 20px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.055); text-align: left; }
+.order-confirmation__receipt-heading { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--teal-bright); }
+.order-confirmation__receipt-heading div { display: grid; gap: 3px; }
+.order-confirmation__receipt-heading strong { color: white; font: 800 16px var(--font-display), sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.order-confirmation__receipt-heading span { color: #aebbc4; font-size: 12px; }
+.order-confirmation__receipt .order-confirmation__actions { margin: 18px auto 0; }
+.order-confirmation__receipt .order-confirmation__actions p { flex-basis: 100%; margin: 4px 0 0; color: #b8c3cb; font-size: 12px; line-height: 1.5; text-align: center; }
 .order-confirmation__actions p { flex-basis: 100%; margin: 5px 0 0; color: #b8c3cb; font-size: 12px; line-height: 1.55; }
 
 @media print {

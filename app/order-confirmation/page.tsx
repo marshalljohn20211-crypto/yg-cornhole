@@ -27,7 +27,7 @@ export default async function OrderConfirmation({ searchParams }: { searchParams
         {isCompleted ? <CheckCircle2 size={48} /> : <CircleAlert size={48} />}
         <span>{isCompleted ? "Payment complete" : "Payment status"}</span>
         <h1>{isCompleted ? "Your order is on the board." : "We could not verify this order."}</h1>
-        <p>{isCompleted ? "PayPal confirmed the payment. YG Cornhole will use the shipping details attached to the transaction to prepare your order." : "Open your PayPal activity to confirm the transaction, or contact YG Cornhole with the order reference below."}</p>
+        <p>{isCompleted ? "PayPal confirmed the payment. Your branded receipt is ready below, and YG Cornhole will use the delivery details attached to the transaction to prepare your order." : "Open your PayPal activity to confirm the transaction, or contact YG Cornhole with the order reference below."}</p>
         {orderId ? <div className="order-confirmation__reference"><small>PayPal order</small><strong>{orderId}</strong></div> : null}
         {isCompleted && orderId ? <ReceiptDownload orderId={orderId} /> : null}
         <Link href="/shop">Keep shopping <ArrowRight size={17} /></Link>

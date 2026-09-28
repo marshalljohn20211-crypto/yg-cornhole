@@ -55,6 +55,9 @@
 .admin-order-body dt { color: #65717c; font-size: 11px; font-weight: 700; }
 .admin-order-body dd { min-width: 0; margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .admin-order-body a { color: #234c69; text-decoration: underline; text-underline-offset: 3px; }
+.admin-receipt-actions { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-receipt-actions a { min-height: 40px; padding: 0 13px; display: inline-flex; align-items: center; border: 1px solid #234c69; color: #234c69; font: 800 9px "Cascadia Mono", Consolas, monospace; text-decoration: none; text-transform: uppercase; }
+.admin-receipt-actions a:first-child { background: #234c69; color: white; }
 .admin-order-body address, .admin-order-body p { margin: 0; color: #3d4b57; font-size: 12px; font-style: normal; line-height: 1.75; }
 .admin-order-body p { margin-top: 12px; }
 .admin-items { grid-column: 1 / -1; }
