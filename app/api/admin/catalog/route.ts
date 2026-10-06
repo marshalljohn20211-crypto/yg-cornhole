@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminAuthenticated } from "../../../lib/admin-auth";
 import { adminRedirect, adminRequestOrigin } from "../../../lib/admin-origin";
-import { archiveCatalogEntry, getCatalog, parseCategoryForm, parseProductForm, saveCategory, saveProduct } from "../../../lib/catalog";
+import { archiveCatalogEntry, getCatalog, parseCategoryForm, parseProductForm, parseSubcategoryForm, saveCategory, saveProduct, saveSubcategory } from "../../../lib/catalog";
 import { getDatabase } from "../../../lib/database";
 
 function imageMime(bytes: Uint8Array) {
@@ -20,14 +20,15 @@ export async function POST(request: NextRequest) {
   const form = await request.formData();
   const type = form.get("type");
   const operation = form.get("operation");
-  const target = type === "category" ? "categories" : "products";
+  const target = type === "category" ? "categories" : type === "subcategory" ? "subcategories" : "products";
 
   try {
-    if (type !== "category" && type !== "product") throw new Error("Unknown catalog type.");
+    if (type !== "category" && type !== "subcategory" && type !== "product") throw new Error("Unknown catalog type.");
     if (operation === "archive") {
       const slug = String(form.get("slug") ?? "");
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Invalid slug.");
       await archiveCatalogEntry(target, slug);
+      if (type === "subcategory") return adminRedirect(request, `/admin/categories/${encodeURIComponent(String(form.get("category") ?? ""))}?view=subcategories&saved=deleted`);
       return adminRedirect(request, `/admin/${target}?saved=deleted`);
     }
     if (operation !== "create" && operation !== "edit") throw new Error("Unknown catalog action.");
@@ -35,6 +36,13 @@ export async function POST(request: NextRequest) {
       const category = parseCategoryForm(form);
       await saveCategory(category, operation);
       return adminRedirect(request, `/admin/categories?edited=${encodeURIComponent(category.slug)}`);
+    }
+
+    if (type === "subcategory") {
+      const catalog = await getCatalog();
+      const subcategory = parseSubcategoryForm(form, catalog);
+      await saveSubcategory(subcategory, operation);
+      return adminRedirect(request, `/admin/categories/${encodeURIComponent(subcategory.category)}?view=subcategories&saved=${encodeURIComponent(subcategory.slug)}`);
     }
 
     const catalog = await getCatalog();
@@ -58,9 +66,14 @@ export async function POST(request: NextRequest) {
     return adminRedirect(request, `/admin/products?edited=${encodeURIComponent(product.slug)}`);
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 220) : "Could not save the catalog entry.";
-    const destination = (operation === "edit" || operation === "archive") && typeof form.get("slug") === "string"
-      ? `/admin/${target}/${encodeURIComponent(String(form.get("slug")))}`
-      : `/admin/${target}/new`;
+    const categorySlug = String(form.get("category") ?? "");
+    const destination = type === "subcategory"
+      ? operation === "create"
+        ? `/admin/categories/${encodeURIComponent(categorySlug)}/subcategories/new`
+        : `/admin/categories/${encodeURIComponent(categorySlug)}/subcategories/${encodeURIComponent(String(form.get("slug") ?? ""))}`
+      : (operation === "edit" || operation === "archive") && typeof form.get("slug") === "string"
+        ? `/admin/${target}/${encodeURIComponent(String(form.get("slug")))}`
+        : `/admin/${target}/new`;
     return adminRedirect(request, `${destination}?error=${encodeURIComponent(message)}`);
   }
 }

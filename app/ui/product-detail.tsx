@@ -30,7 +30,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   return (
     <>
       <div className="product-breadcrumb">
-        <Link href="/shop"><ChevronLeft size={16} /> Shop</Link><span>/</span><Link href={`/shop?category=${product.category}`}>{product.categoryLabel}</Link><span>/</span><b>{product.name}</b>
+        <Link href="/shop"><ChevronLeft size={16} /> Shop</Link><span>/</span><Link href={`/shop?category=${product.category}`}>{product.categoryLabel}</Link>{product.subcategory && product.subcategoryLabel ? <><span>/</span><Link href={`/shop?category=${product.category}&subcategory=${product.subcategory}`}>{product.subcategoryLabel}</Link></> : null}<span>/</span><b>{product.name}</b>
       </div>
       <section className="product-detail" aria-labelledby="product-title">
         <div className="product-gallery">

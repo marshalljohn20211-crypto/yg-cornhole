@@ -1,11 +1,11 @@
 import "server-only";
 
 import type { RowDataPacket } from "mysql2";
-import { categoryOrder, products as starterProducts, type Category, type Product, type ProductOption } from "../data/products";
+import { categoryOrder, products as starterProducts, type Category, type Product, type ProductOption, type Subcategory } from "../data/products";
 import { getDatabase } from "./database";
 
 type CatalogRow = RowDataPacket & { slug: string; data: string | object | null; is_deleted: number };
-export type Catalog = { categories: Category[]; products: Product[]; ready: boolean };
+export type Catalog = { categories: Category[]; subcategories: Subcategory[]; products: Product[]; ready: boolean; subcategoriesReady: boolean };
 
 function isMissingTable(error: unknown) {
   return Boolean(error && typeof error === "object" && (
@@ -22,6 +22,8 @@ function objectValue<T>(value: string | object | null): T | null {
 export async function getCatalog(): Promise<Catalog> {
   let categoryRows: CatalogRow[];
   let productRows: CatalogRow[];
+  let subcategoryRows: CatalogRow[] = [];
+  let subcategoriesReady = true;
   try {
     const [categories] = await getDatabase().execute<CatalogRow[]>("SELECT slug, data, is_deleted FROM catalog_categories");
     const [products] = await getDatabase().execute<CatalogRow[]>("SELECT slug, data, is_deleted FROM catalog_products");
@@ -30,10 +32,20 @@ export async function getCatalog(): Promise<Catalog> {
   } catch (error) {
     if (isMissingTable(error)) return {
       categories: categoryOrder,
+      subcategories: [],
       products: starterProducts.map((product) => ({ ...product, shippingCents: categoryOrder.find((category) => category.slug === product.category)?.shippingCents ?? 0 })),
       ready: false,
+      subcategoriesReady: false,
     };
     throw error;
+  }
+
+  try {
+    const [subcategories] = await getDatabase().execute<CatalogRow[]>("SELECT slug, data, is_deleted FROM catalog_subcategories");
+    subcategoryRows = subcategories;
+  } catch (error) {
+    if (isMissingTable(error)) subcategoriesReady = false;
+    else throw error;
   }
 
   const categories = new Map(categoryOrder.map((category) => [category.slug, category]));
@@ -54,12 +66,32 @@ export async function getCatalog(): Promise<Catalog> {
     }
   }
 
+  const subcategories = new Map<string, Subcategory>();
+  for (const row of subcategoryRows) {
+    if (row.is_deleted) subcategories.delete(row.slug);
+    else {
+      const subcategory = objectValue<Subcategory>(row.data);
+      if (subcategory && categories.has(subcategory.category)) subcategories.set(row.slug, subcategory);
+    }
+  }
+
   const currentCategories = [...categories.values()];
+  const currentSubcategories = [...subcategories.values()];
   const currentProducts = [...products.values()].flatMap((product) => {
     const category = categories.get(product.category);
-    return category ? [{ ...product, categoryLabel: category.name, shippingCents: category.shippingCents }] : [];
+    if (!category) return [];
+    const subcategory = product.subcategory ? subcategories.get(product.subcategory) : undefined;
+    const validSubcategory = subcategory?.category === product.category ? subcategory : undefined;
+    const inheritedPrice = product.priceSource === "subcategory" ? validSubcategory?.defaultPrice : undefined;
+    return [{
+      ...product,
+      categoryLabel: category.name,
+      shippingCents: category.shippingCents,
+      ...(validSubcategory ? { subcategory: validSubcategory.slug, subcategoryLabel: validSubcategory.name } : { subcategory: undefined, subcategoryLabel: undefined }),
+      price: inheritedPrice ?? product.price,
+    }];
   });
-  return { categories: currentCategories, products: currentProducts, ready: true };
+  return { categories: currentCategories, subcategories: currentSubcategories, products: currentProducts, ready: true, subcategoriesReady };
 }
 
 function validSlug(value: string) {
@@ -105,12 +137,34 @@ export function parseCategoryForm(form: FormData): Category {
   };
 }
 
+export function parseSubcategoryForm(form: FormData, catalog: Catalog): Subcategory {
+  const slug = String(form.get("slug") ?? "").trim().toLowerCase();
+  const category = String(form.get("category") ?? "");
+  if (!validSlug(slug)) throw new Error("Use a lowercase subcategory URL with hyphens.");
+  if (!catalog.categories.some((item) => item.slug === category)) throw new Error("Choose a valid parent category.");
+  const defaultPriceValue = String(form.get("defaultPrice") ?? "").trim();
+  const defaultPriceCents = defaultPriceValue ? moneyCents(defaultPriceValue, "Shared price") : undefined;
+  if (defaultPriceCents !== undefined && defaultPriceCents < 1) throw new Error("Shared price must be greater than zero when provided.");
+  const description = String(form.get("description") ?? "").trim();
+  if (description.length > 500) throw new Error("Description must contain at most 500 characters.");
+  return {
+    slug,
+    category,
+    name: required(String(form.get("name") ?? ""), "Subcategory name", 100),
+    ...(description ? { description } : {}),
+    ...(defaultPriceCents !== undefined ? { defaultPrice: defaultPriceCents / 100 } : {}),
+  };
+}
+
 export function parseProductForm(form: FormData, catalog: Catalog, uploadedImage?: string): Product {
   const slug = String(form.get("slug") ?? "").trim().toLowerCase();
   const category = String(form.get("category") ?? "");
   const selectedCategory = catalog.categories.find((item) => item.slug === category);
+  const subcategorySlug = String(form.get("subcategory") ?? "").trim();
+  const selectedSubcategory = subcategorySlug ? catalog.subcategories.find((item) => item.slug === subcategorySlug && item.category === category) : undefined;
   if (!validSlug(slug)) throw new Error("Use a lowercase product slug with hyphens.");
   if (!selectedCategory) throw new Error("Choose a valid category.");
+  if (subcategorySlug && !selectedSubcategory) throw new Error("Choose a subcategory that belongs to this category.");
   const sizes = lines(String(form.get("sizes") ?? ""), 30);
   const colors = lines(String(form.get("colors") ?? ""), 30);
   if (!sizes.length || !colors.length) throw new Error("Add at least one size/configuration and one color/finish.");
@@ -120,7 +174,12 @@ export function parseProductForm(form: FormData, catalog: Catalog, uploadedImage
   const customOptions: ProductOption[] = optionName
     ? [{ name: required(optionName, "Custom option name", 60), values: optionValues }]
     : [];
-  const priceCents = moneyCents(String(form.get("price") ?? ""), "Price");
+  const priceSource = String(form.get("priceSource") ?? "product") === "subcategory" ? "subcategory" : "product";
+  if (priceSource === "subcategory" && !selectedSubcategory?.defaultPrice) throw new Error("This subcategory does not have a shared price. Enter a product price instead.");
+  const enteredPrice = String(form.get("price") ?? "").trim();
+  const priceCents = priceSource === "subcategory"
+    ? Math.round((selectedSubcategory?.defaultPrice ?? 0) * 100)
+    : moneyCents(enteredPrice, "Price");
   if (priceCents < 1) throw new Error("Product price must be greater than zero.");
   const speedFastValue = String(form.get("speedFast") ?? "").trim();
   const speedControlValue = String(form.get("speedControl") ?? "").trim();
@@ -137,6 +196,8 @@ export function parseProductForm(form: FormData, catalog: Catalog, uploadedImage
     name,
     category,
     categoryLabel: selectedCategory.name,
+    ...(selectedSubcategory ? { subcategory: selectedSubcategory.slug, subcategoryLabel: selectedSubcategory.name } : {}),
+    priceSource,
     price: priceCents / 100,
     image: imagePath(uploadedImage ?? String(form.get("image") ?? "")),
     alt: required(alt, "Image description", 180),
@@ -150,6 +211,22 @@ export function parseProductForm(form: FormData, catalog: Catalog, uploadedImage
     ...(speedControl !== undefined ? { speedControl } : {}),
     ...(customOptions.length ? { customOptions } : {}),
   };
+}
+
+export async function saveSubcategory(subcategory: Subcategory, mode: "create" | "edit") {
+  const catalog = await getCatalog();
+  if (!catalog.subcategoriesReady) throw new Error("Subcategory storage is not installed. Run the subcategory migration first.");
+  const existing = catalog.subcategories.find((entry) => entry.slug === subcategory.slug);
+  if (mode === "create" && existing) throw new Error("That subcategory URL already exists.");
+  if (mode === "edit" && !existing) throw new Error("Subcategory not found.");
+  if (mode === "edit" && existing?.category !== subcategory.category) throw new Error("A subcategory cannot be moved to another category.");
+  if (!subcategory.defaultPrice && catalog.products.some((product) => product.subcategory === subcategory.slug && product.priceSource === "subcategory")) {
+    throw new Error("Set those products to their own price before removing this shared price.");
+  }
+  await getDatabase().execute(
+    "INSERT INTO catalog_subcategories (slug, data, is_deleted) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE data = VALUES(data), is_deleted = 0",
+    [subcategory.slug, JSON.stringify(subcategory)],
+  );
 }
 
 export async function saveCategory(category: Category, mode: "create" | "edit") {
@@ -176,17 +253,25 @@ export async function saveProduct(product: Product, mode: "create" | "edit") {
   );
 }
 
-export async function archiveCatalogEntry(type: "products" | "categories", slug: string) {
+export async function archiveCatalogEntry(type: "products" | "categories" | "subcategories", slug: string) {
   const catalog = await getCatalog();
   if (!catalog.ready) throw new Error("Catalog tables are not installed. Run the catalog migration first.");
   if (type === "categories" && catalog.products.some((product) => product.category === slug)) {
     throw new Error("Move or archive the products in this category first.");
   }
+  if (type === "categories" && catalog.subcategories.some((subcategory) => subcategory.category === slug)) {
+    throw new Error("Delete this category's subcategories first.");
+  }
+  if (type === "subcategories" && catalog.products.some((product) => product.subcategory === slug)) {
+    throw new Error("Move or delete the products in this subcategory first.");
+  }
   const exists = type === "products"
     ? catalog.products.some((product) => product.slug === slug)
-    : catalog.categories.some((category) => category.slug === slug);
+    : type === "categories"
+      ? catalog.categories.some((category) => category.slug === slug)
+      : catalog.subcategories.some((subcategory) => subcategory.slug === slug);
   if (!exists) throw new Error("Catalog entry not found.");
-  const table = type === "products" ? "catalog_products" : "catalog_categories";
+  const table = type === "products" ? "catalog_products" : type === "categories" ? "catalog_categories" : "catalog_subcategories";
   await getDatabase().execute(
     `INSERT INTO ${table} (slug, data, is_deleted) VALUES (?, NULL, 1) ON DUPLICATE KEY UPDATE data = NULL, is_deleted = 1`,
     [slug],

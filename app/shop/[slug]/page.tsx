@@ -19,7 +19,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = catalog.products.find((item) => item.slug === slug);
   if (!product) notFound();
-  const related = catalog.products.filter((candidate) => candidate.category === product.category && candidate.slug !== product.slug).slice(0, 3);
+  const related = catalog.products.filter((candidate) => candidate.category === product.category && candidate.slug !== product.slug).sort((a, b) => Number(b.subcategory === product.subcategory) - Number(a.subcategory === product.subcategory)).slice(0, 3);
 
   return (
     <main className="store-page" id="main-content">

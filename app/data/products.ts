@@ -2,6 +2,14 @@ export type ProductCategory = string;
 
 export type Category = { slug: string; name: string; description: string; shippingCents: number };
 
+export type Subcategory = {
+  slug: string;
+  category: ProductCategory;
+  name: string;
+  description?: string;
+  defaultPrice?: number;
+};
+
 export type ProductOption = { name: string; values: string[] };
 
 export type Product = {
@@ -9,6 +17,9 @@ export type Product = {
   name: string;
   category: ProductCategory;
   categoryLabel: string;
+  subcategory?: string;
+  subcategoryLabel?: string;
+  priceSource?: "product" | "subcategory";
   price: number;
   image: string;
   alt: string;

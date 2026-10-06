@@ -3,32 +3,34 @@
 import Link from "next/link";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Category, Product } from "../data/products";
+import type { Category, Product, Subcategory } from "../data/products";
 import StoreProductCard from "./store-product-card";
 
 type Filter = "all" | string;
 type Sort = "featured" | "price-low" | "price-high" | "name";
 const PAGE_SIZE = 9;
 
-export default function ShopCatalog({ initialCategory = "all", products, categories }: { initialCategory?: Filter; products: Product[]; categories: Category[] }) {
+export default function ShopCatalog({ initialCategory = "all", initialSubcategory, products, categories, subcategories }: { initialCategory?: Filter; initialSubcategory?: string; products: Product[]; categories: Category[]; subcategories: Subcategory[] }) {
   const [filter, setFilter] = useState<Filter>(initialCategory);
+  const [subcategoryFilter, setSubcategoryFilter] = useState(initialSubcategory ?? "");
   const [sort, setSort] = useState<Sort>("featured");
   const [page, setPage] = useState(1);
 
   const visibleProducts = useMemo(() => {
-    const filtered = filter === "all" ? [...products] : products.filter((product) => product.category === filter);
+    const filtered = filter === "all" ? [...products] : products.filter((product) => product.category === filter && (!subcategoryFilter || product.subcategory === subcategoryFilter));
     if (sort === "price-low") return filtered.sort((a, b) => a.price - b.price);
     if (sort === "price-high") return filtered.sort((a, b) => b.price - a.price);
     if (sort === "name") return filtered.sort((a, b) => a.name.localeCompare(b.name));
     return filtered;
-  }, [filter, sort, products]);
+  }, [filter, subcategoryFilter, sort, products]);
 
-  const activeName = filter === "all" ? "All gear" : categories.find((category) => category.slug === filter)?.name;
+  const activeName = subcategoryFilter ? subcategories.find((subcategory) => subcategory.slug === subcategoryFilter)?.name : filter === "all" ? "All gear" : categories.find((category) => category.slug === filter)?.name;
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pagedProducts = visibleProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  function chooseCategory(next: Filter) { setFilter(next); setPage(1); }
+  function chooseCategory(next: Filter) { setFilter(next); setSubcategoryFilter(""); setPage(1); }
+  function chooseSubcategory(category: string, subcategory: string) { setFilter(category); setSubcategoryFilter(subcategory); setPage(1); }
   function chooseSort(next: Sort) { setSort(next); setPage(1); }
 
   return (
@@ -46,8 +48,9 @@ export default function ShopCatalog({ initialCategory = "all", products, categor
                   <ChevronDown size={18} aria-hidden="true" />
                 </summary>
                 <div>
-                  <button className={filter === category.slug ? "is-active" : ""} onClick={() => chooseCategory(category.slug)}>Show all {category.name}</button>
-                  {categoryProducts.map((product) => <Link href={`/shop/${product.slug}`} key={product.slug}>{product.name}</Link>)}
+                  <button className={filter === category.slug && !subcategoryFilter ? "is-active" : ""} onClick={() => chooseCategory(category.slug)}>Show all {category.name}</button>
+                  {subcategories.filter((subcategory) => subcategory.category === category.slug).map((subcategory) => <button className={subcategoryFilter === subcategory.slug ? "is-active" : ""} onClick={() => chooseSubcategory(category.slug, subcategory.slug)} key={subcategory.slug}>{subcategory.name} <span>{categoryProducts.filter((product) => product.subcategory === subcategory.slug).length}</span></button>)}
+                  {categoryProducts.filter((product) => !product.subcategory).map((product) => <Link href={`/shop/${product.slug}`} key={product.slug}>{product.name}</Link>)}
                 </div>
               </details>
             );
