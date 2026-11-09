@@ -22,7 +22,7 @@ export default function ContactPage() {
         <div className="contact-brief">
           <div className="contact-brief__image"><Image src="/images/gallery/custom-board-plaid.jpeg" alt="Plaid custom cornhole board set by YG Cornhole" fill sizes="(max-width: 820px) 100vw, 42vw" /></div>
           <div className="contact-points">
-            <a href="mailto:hello@ygcornhole.com"><Mail /><span><b>Email the shop</b>hello@ygcornhole.com</span></a>
+            <a href="mailto:orders@ygcornhole.com"><Mail /><span><b>Email the shop</b>orders@ygcornhole.com</span></a>
             <div><Clock3 /><span><b>Typical reply</b>Within 1–2 business days</span></div>
             <div><MapPin /><span><b>Built in the USA</b>Shipping available nationwide</span></div>
           </div>

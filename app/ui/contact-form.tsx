@@ -16,7 +16,7 @@ export default function ContactForm() {
     const subject = encodeURIComponent(`${projectType} inquiry from ${name}`);
     const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nProject: ${projectType}\n\n${message}`);
     toast.info("Your email draft is ready to send.");
-    window.location.href = `mailto:hello@ygcornhole.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:orders@ygcornhole.com?subject=${subject}&body=${body}`;
   }
 
   return (
